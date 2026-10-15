@@ -1,0 +1,31 @@
+{
+  "name": "orcamentacao-eletrica",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Orçamentação de instalações elétricas residenciais (uso pessoal). Fase F1: planta.",
+  "workspaces": [
+    "packages/core",
+    "apps/server",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build-web.mjs",
+    "start": "node scripts/build-web.mjs && tsx apps/server/src/index.ts",
+    "test": "npm run test -w packages/core && npm run test -w apps/server",
+    "typecheck": "tsc -p packages/core && tsc -p apps/server",
+    "test:e2e": "node scripts/build-web.mjs && node --import tsx --test e2e/*.test.ts",
+    "typecheck:web": "tsc -p apps/web"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3",
+    "@types/node": "26.2.0",
+    "playwright": "1.56.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
