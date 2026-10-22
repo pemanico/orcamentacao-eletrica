@@ -1,4 +1,4 @@
-# Orçamentação Elétrica — F1 (planta)
+# Orçamentação Elétrica — F1 (planta) + F0 (regras)
 
 Aplicação local, de uso pessoal, para orçamentar instalações elétricas residenciais
 monofásicas a partir do PDF do arquiteto. Esta versão implementa a **fase F1** do plano
@@ -86,6 +86,22 @@ recebe um aviso de conflito em vez de apagar o trabalho do primeiro.
 
 Com **Selecionar**, um elemento selecionado mostra pegas que podes arrastar para o
 corrigir (extremos de paredes, cantos de divisões).
+
+## Regras (F0)
+
+Menu **Regras**: cinco tabelas (defaults por divisão, tipos de circuito, equipamentos, mão
+de obra, parâmetros). Edita diretamente nas células e grava ao sair da célula.
+
+- Estados: **A definir** → **Proposta** → **Aprovada**. Só as aprovadas entram nos cálculos.
+- Uma linha só pode ser aprovada com os campos obrigatórios (*) preenchidos; nas tabelas
+  técnicas, também com a **fonte** (artigo RTIEBT, formador…).
+- Alterar uma regra aprovada retira-lhe a aprovação.
+- O número no menu **Regras** é o total por aprovar.
+- **Exportar CSV** abre no Excel, para levar ao formador.
+
+As regras ficam na base de dados local (`data/`), por isso as horas, o preço da hora e as
+margens nunca vão para o GitHub. A pasta `regras/` só tem os valores iniciais, carregados
+na primeira vez que a app arranca (nunca sobrescreve o que já editaste).
 
 ## Testes
 

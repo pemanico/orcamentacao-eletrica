@@ -1,0 +1,18 @@
+codigo;tipo;agrupamento;seccao_mm2;disjuntor_A;n_condutores;max_pontos;diferencial;estado;fonte;notas
+C1;tomadas;sala;;;;;;proposta;Ordep;"agrupamento dito pelo Ordep; valores técnicos por validar"
+C2-C4;tomadas;um por quarto;;;;;;proposta;Ordep;
+C5;tomadas;casas de banho;;;;;;proposta;Ordep;
+C6;dedicado;forno;;;;;;proposta;Ordep;
+C7;dedicado;placa;;;;;;proposta;Ordep;
+C7b;tomadas;cozinha (exaustor, frigorífico, isoladas);;;;;;proposta;Ordep;
+C8;tomadas;lavandaria;;;;;;proposta;Ordep;
+C9;iluminacao;quartos;;;;;;proposta;Ordep;
+C10;iluminacao;casas de banho;;;;;;proposta;Ordep;
+C11;iluminacao;cozinha + sala + garagem;;;;;;proposta;Ordep;
+C12;dedicado;bomba de calor;;;;;;proposta;Ordep;
+C12b;dedicado;ar condicionado;;;;;;proposta;Ordep;
+;iluminacao;corredor;;;;;;a_definir;;em falta na lista
+;iluminacao;lavandaria;;;;;;a_definir;;em falta na lista
+;dedicado;máquina de lavar loiça;;;;;;a_definir;;em falta na lista
+;iluminacao;exterior;;;;;;a_definir;;em falta na lista
+;dedicado;carregador VE (se existir);;;;;;a_definir;;em falta na lista

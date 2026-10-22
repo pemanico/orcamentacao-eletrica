@@ -1,9 +1,9 @@
-equipamento;potencia_W;coef_simultaneidade;fonte;estado
-placa;;;;A PREENCHER
-forno;;;;A PREENCHER
-bomba_de_calor;;;;A PREENCHER
-ar_condicionado;;;;A PREENCHER
-maquina_loica;;;;A PREENCHER
-maquina_roupa;;;;A PREENCHER
-maquina_secar;;;;A PREENCHER
-carregador_ve;;;;A PREENCHER
+equipamento;potencia_W;coef_simultaneidade;estado;fonte;notas
+placa;;;a_definir;;
+forno;;;a_definir;;
+bomba de calor;;;a_definir;;
+ar condicionado;;;a_definir;;
+máquina de lavar loiça;;;a_definir;;
+máquina de lavar roupa;;;a_definir;;
+máquina de secar;;;a_definir;;
+carregador VE;;;a_definir;;

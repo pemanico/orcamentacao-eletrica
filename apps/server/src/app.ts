@@ -6,6 +6,7 @@ import { z } from "zod";
 import { canApprove, emptyFloorState, floorStateSchema, validateFloor, type FloorState } from "@orc/core";
 import type { Db, FloorRow, ProjectRow } from "./db.ts";
 import { HttpError, Router, readBody, readJson, sendJson } from "./http.ts";
+import { migrateRules, registerRuleRoutes, seedRules } from "./rules.ts";
 
 const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
@@ -73,6 +74,8 @@ export function buildApp(opts: {
   dataDir: string;
   /** pasta das cópias de segurança; por defeito <dataDir>/copias. Aponta para o OneDrive, por exemplo. */
   backupDir?: string;
+  /** pasta com os CSV de valores iniciais das regras (carregados só se a tabela estiver vazia) */
+  rulesSeedDir?: string;
   webDist?: string;
   log?: (msg: string) => void;
 }) {
@@ -88,6 +91,8 @@ export function buildApp(opts: {
     db.prepare("UPDATE projects SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(id);
 
   const backupDir = resolve(opts.backupDir ?? join(dataDir, "copias"));
+  migrateRules(db);
+  if (opts.rulesSeedDir) seedRules(db, opts.rulesSeedDir, log);
 
   const listBackups = () =>
     existsSync(backupDir)
@@ -252,6 +257,8 @@ export function buildApp(opts: {
       db.prepare("UPDATE floors SET approved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(row.id);
       return floorDto(getFloor(row.id)!);
     });
+
+  registerRuleRoutes(router, db);
 
   const webRoot = opts.webDist && existsSync(opts.webDist) ? resolve(opts.webDist) : null;
 

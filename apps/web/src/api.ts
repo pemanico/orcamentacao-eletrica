@@ -1,4 +1,4 @@
-import type { FloorState, Issue } from "@orc/core";
+import type { FloorState, Issue, RuleRow, RuleState, RuleTableId } from "@orc/core";
 
 export interface Project {
   id: string;
@@ -101,5 +101,11 @@ export const api = {
   approveFloor: (id: string) => call<Floor>(`/api/floors/${id}/approve`, { method: "POST" }),
   pdfUrl: (id: string) => `/api/floors/${id}/pdf`,
   info: () => call<DataInfo>("/api/info"),
+  ruleSummary: () => call<{ id: RuleTableId; total: number; pending: number }[]>("/api/rules"),
+  listRules: (t: RuleTableId) => call<RuleRow[]>(`/api/rules/${t}`),
+  createRule: (t: RuleTableId) => call<RuleRow>(`/api/rules/${t}`, json("POST", { values: {} })),
+  updateRule: (t: RuleTableId, id: string, patch: { values?: Record<string, string | null>; state?: RuleState; source?: string; notes?: string }) =>
+    call<RuleRow>(`/api/rules/${t}/${id}`, json("PUT", patch)),
+  deleteRule: (t: RuleTableId, id: string) => call<{ ok: true }>(`/api/rules/${t}/${id}`, { method: "DELETE" }),
   backup: () => call<{ folder: string; dbBytes: number; backupCount: number }>("/api/backup", { method: "POST" }),
 };

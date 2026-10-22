@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, type ProjectDetail } from "../api";
 import { go } from "../nav";
 import { inspectPdf } from "../pdf";
+import { Shell } from "../Shell";
 
 export function ProjectPage({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -48,15 +49,17 @@ export function ProjectPage({ projectId }: { projectId: string }) {
   }
 
   if (!project) {
-    return <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">A carregar…</p>}</div>;
+    return (
+      <Shell section="projetos" crumbs={[{ label: "Projetos", href: "#/" }, { label: "…" }]}>
+        <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">A carregar…</p>}</div>
+      </Shell>
+    );
   }
 
   return (
+    <Shell section="projetos" crumbs={[{ label: "Projetos", href: "#/" }, { label: project.name }]}>
     <div className="page">
       <header className="page-header">
-        <a href="#/" className="back">
-          ← Projetos
-        </a>
         <h1>{project.name}</h1>
         <p className="muted">{[project.client, project.address].filter(Boolean).join(" · ")}</p>
       </header>
@@ -138,5 +141,6 @@ export function ProjectPage({ projectId }: { projectId: string }) {
         {error && <p className="error">{error}</p>}
       </section>
     </div>
+    </Shell>
   );
 }

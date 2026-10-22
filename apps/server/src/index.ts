@@ -12,6 +12,7 @@ const server = buildApp({
   db,
   dataDir,
   backupDir: process.env.ORC_BACKUP_DIR,
+  rulesSeedDir: join(root, "regras"),
   webDist: join(root, "apps/web/dist"),
   log: process.env.ORC_QUIET ? undefined : (m) => console.log(m),
 });

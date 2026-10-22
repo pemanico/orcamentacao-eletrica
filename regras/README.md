@@ -1,18 +1,8 @@
-# Regras (fase F0)
+# Regras — valores iniciais
 
-Tabelas que o motor de regras vai usar na F2. **Só linhas com `estado = aprovada` entram
-em cálculos.** Edita em Excel (separador `;`).
+Estes CSV só servem para **carregar a base de dados na primeira vez** que a app arranca.
+Depois disso as regras editam-se na app (menu **Regras**) e ficam na tua base de dados
+local (`data/`), que nunca vai para o GitHub. Os valores comerciais (horas, preço da hora,
+margens) nunca devem ser escritos aqui.
 
-| Ficheiro | Conteúdo | No repositório? |
-| --- | --- | --- |
-| `defaults-divisoes.csv` | Pontos por defeito por tipo de divisão | Sim |
-| `tipos-circuito.csv` | Secção, disjuntor, diferencial por tipo de circuito | Sim |
-| `equipamentos.csv` | Potência e simultaneidade dos equipamentos dedicados | Sim |
-| `mao-de-obra.exemplo.csv` | Modelo: copia para `mao-de-obra.local.csv` e preenche | Só o modelo |
-| `*.local.csv` | Os teus valores de MO, margens e preços | **Não** (gitignore) |
-
-Estados: `proposta` (dito pelo Ordep, por confirmar) · `A DEFINIR` / `A VALIDAR` /
-`EM FALTA` / `A PREENCHER` · `aprovada`.
-
-Os valores técnicos (secções, calibres, diferenciais, coeficientes) vêm das RTIEBT ou do
-formador, com a fonte na coluna própria. Nunca de um LLM.
+Para levar ao formador: na app, **Regras → Exportar CSV** (abre no Excel, separador `;`).

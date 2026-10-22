@@ -28,7 +28,7 @@ const at = (xm: number, ym: number) => ({ x: O + xm * M, y: PAGE_H - (O + ym * M
 
 const dataDir = mkdtempSync(join(tmpdir(), "orc-e2e-"));
 const db = openDb(join(dataDir, "e2e.db"));
-const server = buildApp({ db, dataDir, webDist: join(root, "apps/web/dist") });
+const server = buildApp({ db, dataDir, webDist: join(root, "apps/web/dist"), rulesSeedDir: join(root, "regras") });
 let base = "";
 let browser: Browser;
 let page: Page;
@@ -184,8 +184,48 @@ describe("F1 — planta", () => {
     await page.locator(".tool-hint").waitFor();
   });
 
-  it("página inicial mostra onde estão os dados e faz a cópia de segurança", async () => {
-    await page.goto(base);
+  it("breadcrumb do editor leva de volta ao projeto", async () => {
+    const crumbs = page.locator(".crumbs");
+    await crumbs.getByText("Piso R/C").waitFor();
+    await crumbs.getByRole("link", { name: "Teste E2E" }).click();
+    await page.waitForURL(/#\/projeto\//);
+    await page.locator(".crumbs").getByText("Teste E2E").waitFor();
+    await page.getByRole("heading", { name: "Pisos" }).waitFor();
+  });
+
+  it("Regras: menu com pendentes, aprovar uma linha, técnica sem fonte não aprova", async () => {
+    await page.locator(".menu").getByRole("link", { name: /Regras/ }).click();
+    await page.waitForURL(/#\/regras/);
+    await page.locator(".crumbs").getByText("Defaults por divisão").waitFor();
+    const badge = page.locator(".menu-badge");
+    const before = Number(await badge.textContent());
+    assert.ok(before > 50, `esperava muitas regras por aprovar, há ${before}`);
+
+    const first = page.locator("tr.rule-row").first();
+    assert.equal(await first.getByLabel("Elemento").inputValue(), "ponto_luz");
+    await first.getByLabel("Estado").selectOption("aprovada");
+    await page.locator(".tabs a.active .tab-count").getByText("27").waitFor();
+    await page.locator(".menu-badge").getByText(String(before - 1), { exact: true }).waitFor();
+
+    // editar a quantidade de uma linha aprovada retira a aprovação
+    const qtd = first.getByLabel("Qtd.");
+    await qtd.fill("2");
+    await qtd.press("Enter");
+    await page.locator(".tabs a.active .tab-count").getByText("28").waitFor();
+    assert.equal(await first.getByLabel("Estado").inputValue(), "proposta");
+
+    // tabela técnica: sem valores nem fonte, "Aprovada" está bloqueado e explica porquê
+    await page.locator(".tabs").getByRole("link", { name: /Tipos de circuito/ }).click();
+    await page.locator(".crumbs").getByText("Tipos de circuito").waitFor();
+    const c1 = page.locator("tr.rule-row").first();
+    assert.equal(await c1.locator('select[aria-label="Estado"] option[value="aprovada"]').isDisabled(), true);
+    await page.getByText(/Para aprovar: falta secção, falta disjuntor/).first().waitFor();
+    if (shots) await page.screenshot({ path: join(shots, "regras.png") });
+  });
+
+  it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {
+    await page.locator(".menu").getByRole("link", { name: "Dados" }).click();
+    await page.waitForURL(/#\/dados/);
     const card = page.locator(".data-card");
     await card.getByText(/e2e\.db$/).first().waitFor();
     await card.getByText(/1 projeto\(s\) · 1 piso\(s\)/).waitFor();

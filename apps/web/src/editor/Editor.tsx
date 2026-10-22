@@ -501,9 +501,6 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
   return (
     <div className={`editor ${panelOpen ? "" : "panel-closed"}`}>
       <aside className="toolbar" aria-label="Ferramentas">
-        <a href={`#/projeto/${floor.projectId}`} className="tool back" title="Voltar ao projeto">
-          ←
-        </a>
         {TOOLS.map((t) => (
           <button
             key={t.id}
