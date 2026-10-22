@@ -3,3 +3,6 @@ apps/web/dist/
 data/
 *.log
 .DS_Store
+
+# valores comerciais (MO, margens, preços) — nunca no repositório público
+regras/*.local.csv

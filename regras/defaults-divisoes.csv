@@ -1,0 +1,31 @@
+divisao;elemento;quantidade;notas;origem;estado
+quarto;ponto_luz;1;central;Ordep;proposta
+quarto;tomada;3;2 cabeceiras + 1 TV;Ordep;proposta
+quarto;interruptor_comutado;3;entrada + 2 mesinhas de cabeceira;Ordep;proposta
+quarto;tomada_rede;1;;Ordep;proposta
+quarto;tomada_tv;1;salvo se o cliente não quiser;Ordep;proposta
+escritorio;=quarto;;tratado como quarto;Ordep;proposta
+sala;ponto_luz;2;;Ordep;proposta
+sala;tomada;;depende da posição da TV — perguntar ao cliente;Ordep;proposta
+sala;interruptor;;1 por entrada?;Ordep;A DEFINIR
+sala;tomada_rede;1;;Ordep;proposta
+sala;tomada_tv;1;salvo se o cliente não quiser;Ordep;proposta
+casa_de_banho;foco;2;;Ordep;proposta
+casa_de_banho;tomada;1;posição condicionada pelos volumes RTIEBT;Ordep;proposta
+casa_de_banho;interruptor;1;;Ordep;proposta
+corredor;ponto_luz;;focos, LED, candeeiros ou apliques — quantos por metro?;Ordep;A DEFINIR
+corredor;interruptor_comutado;2;início e fim;Ordep;proposta
+corredor;mais_de_2_portas;;inversores ou telerruptor?;;A DEFINIR
+cozinha;ponto_luz;;quantos? depende da área?;;A DEFINIR
+cozinha;tomada_forno;1;circuito dedicado;Ordep;proposta
+cozinha;tomada_placa;1;circuito dedicado;Ordep;proposta
+cozinha;tomada_frigorifico;1;;Ordep;proposta
+cozinha;tomada_microondas;1;;Ordep;proposta
+cozinha;tomada_exaustor;1;;Ordep;proposta
+cozinha;tomada_bancada;2;depende do cliente;Ordep;proposta
+cozinha;tomada_maquina_loica;;esquecida na conversa — circuito dedicado?;;A DEFINIR
+cozinha;interruptor;1;;Ordep;proposta
+lavandaria;tomada_maquina_roupa;;quantas? máquina de secar?;;A DEFINIR
+lavandaria;ponto_luz;;;;A DEFINIR
+garagem;ponto_luz;;iluminação no circuito C11 com cozinha e sala;Ordep;proposta
+exterior;ponto_luz;;iluminação exterior — quantos? circuito próprio?;;A DEFINIR
