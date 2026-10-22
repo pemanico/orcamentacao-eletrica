@@ -1,4 +1,5 @@
 import {
+  isHatchLayer,
   dxfToPage,
   looksLikeRoomName,
   segmentTouchesRegion,
@@ -117,4 +118,23 @@ export function overviewSvg(
     [...byLayer.values()].map((l) => `<path d="${l.join("")}"/>`).join("") +
     `</g></svg>`;
   return { url: URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), width: vw, height: vh, minX: e.minX, maxY: e.maxY, scale: s };
+}
+
+/** Miniatura (data URL SVG) das paredes de uma região, para os cartões das plantas encontradas. */
+export function thumbnailSvg(d: DxfDrawing, region: Region, size = 220): string {
+  const W = region.maxX - region.minX;
+  const H = region.maxY - region.minY;
+  const s = size / Math.max(W, H);
+  const parts: string[] = [];
+  for (const seg of d.segments) {
+    if (!(isHatchLayer(seg.layer) || /corte|parede|wall/i.test(seg.layer))) continue;
+    if (!segmentTouchesRegion(seg, region)) continue;
+    parts.push(
+      `M${r2((seg.a.x - region.minX) * s)} ${r2((region.maxY - seg.a.y) * s)}L${r2((seg.b.x - region.minX) * s)} ${r2((region.maxY - seg.b.y) * s)}`,
+    );
+  }
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${r2(W * s)}" height="${r2(H * s)}" viewBox="0 0 ${r2(W * s)} ${r2(H * s)}">` +
+    `<rect width="100%" height="100%" fill="#fff"/><path d="${parts.join("")}" fill="none" stroke="#26324a" stroke-width="0.6"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

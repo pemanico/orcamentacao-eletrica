@@ -95,7 +95,10 @@ Output = `DXF`, versão `ACAD2018`) ou, no AutoCAD/BricsCAD, *Guardar como → D
 
 1. **Importar** o `.dxf` na página do projeto.
 2. **Escolher a planta**: o DXF é o projeto inteiro (implantação, versões, alçados, cortes).
-   Arrasta um retângulo à volta da planta do piso.
+   A app encontra as **plantas de piso** pelos nomes das divisões e mostra-as como cartões
+   (miniatura, n.º de divisões e o que distingue cada versão, ex. "alterações"). Escolhe uma,
+   ou arrasta um retângulo. Uma zona sem nomes de divisões dá aviso: é quase sempre a
+   implantação (só o contorno da casa, sem paredes interiores).
 3. **Confirmar as unidades**: são deduzidas das cotas do desenho, não do cabeçalho (que pode
    estar errado: no primeiro DXF real dizia centímetros e o desenho estava em metros).
    A medida da planta escolhida aparece ao lado, para conferires.

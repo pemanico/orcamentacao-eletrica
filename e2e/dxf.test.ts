@@ -73,6 +73,21 @@ describe("DXF", () => {
     await p.getByText(/O cabeçalho do ficheiro diz centímetros, mas as cotas indicam metros/).waitFor();
   });
 
+  it("encontra as plantas pelos nomes das divisões e avisa numa zona sem divisões", async () => {
+    assert.equal(await p.locator(".candidate").count(), 2);
+    // zona da topografia (sem divisões) → aviso
+    const img = (await p.locator(".dxf-setup svg.canvas image").boundingBox())!;
+    await p.mouse.move(img.x + 10, img.y + 5);
+    await p.mouse.down();
+    await p.mouse.move(img.x + 120, img.y + 30, { steps: 5 });
+    await p.mouse.up();
+    await p.getByTestId("no-rooms").waitFor();
+    // escolher a planta 1 seleciona a zona com as 3 divisões
+    await p.getByRole("button", { name: "Planta 1" }).click();
+    assert.equal(await p.getByTestId("no-rooms").count(), 0);
+    await p.getByText("3 nomes de divisões dentro da zona.").waitFor();
+  });
+
   it("escolhe a planta A com um retângulo", async () => {
     const img = (await p.locator(".dxf-setup svg.canvas image").boundingBox())!;
     const toScreen = (x: number, y: number) => ({

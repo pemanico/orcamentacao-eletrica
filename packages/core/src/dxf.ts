@@ -559,3 +559,88 @@ export function upgradeLayerMeta(meta: DxfSourceMeta, regionLayers: string[]): {
   const hidden = meta.hidden.filter((n) => !isHatchLayer(n));
   return { meta: { ...meta, snap, hidden, layerVersion: DXF_LAYER_VERSION }, changed: true };
 }
+
+// ----------------------------------------------------------------- deteção das plantas
+
+export interface PlanCandidate {
+  region: Region;
+  /** nomes das divisões encontrados (sem repetidos, pela ordem do desenho) */
+  rooms: string[];
+  wallSegments: number;
+}
+
+/**
+ * Encontra as plantas de piso dentro do DXF: agrupa os nomes de divisões ("Quarto 1",
+ * "IS.2", "Cozinha"…) que estão próximos e devolve a região de cada grupo. Assim não é
+ * preciso procurar a planta no meio da implantação, alçados e cortes.
+ */
+export function findPlanCandidates(
+  d: Pick<DxfDrawing, "texts" | "segments" | "dimensions" | "headerUnits" | "extents">,
+  isRoomName: (text: string) => boolean,
+  opts: { linkMeters?: number; marginMeters?: number; minRooms?: number } = {},
+): PlanCandidate[] {
+  const unit = guessUnits(d).unit;
+  const perM = 1 / METERS_PER_DXF_UNIT[unit];
+  const link = (opts.linkMeters ?? 9) * perM;
+  const margin = (opts.marginMeters ?? 5) * perM;
+  const minRooms = opts.minRooms ?? 3;
+  const pts = d.texts.filter((t) => isRoomName(t.text));
+  if (pts.length === 0) return [];
+
+  // agrupamento por proximidade (union-find em grelha)
+  const parent = pts.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  const cell = (v: number) => Math.floor(v / link);
+  const grid = new Map<string, number[]>();
+  pts.forEach((t, i) => {
+    const k = `${cell(t.at.x)},${cell(t.at.y)}`;
+    (grid.get(k) ?? grid.set(k, []).get(k)!).push(i);
+  });
+  pts.forEach((t, i) => {
+    const cx = cell(t.at.x);
+    const cy = cell(t.at.y);
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (const j of grid.get(`${cx + dx},${cy + dy}`) ?? []) {
+          if (j <= i) continue;
+          const o = pts[j]!;
+          if (Math.hypot(o.at.x - t.at.x, o.at.y - t.at.y) <= link) parent[find(i)] = find(j);
+        }
+  });
+  const groups = new Map<number, number[]>();
+  pts.forEach((_, i) => (groups.get(find(i)) ?? groups.set(find(i), []).get(find(i))!).push(i));
+
+  const out: PlanCandidate[] = [];
+  for (const idx of groups.values()) {
+    const names = [...new Set(idx.map((i) => pts[i]!.text))];
+    if (names.length < minRooms) continue;
+    const xs = idx.map((i) => pts[i]!.at.x);
+    const ys = idx.map((i) => pts[i]!.at.y);
+    const region = { minX: Math.min(...xs) - margin, minY: Math.min(...ys) - margin, maxX: Math.max(...xs) + margin, maxY: Math.max(...ys) + margin };
+    const wallSegments = d.segments.filter((s) => (defaultSnapLayer(s.layer) || SNAP_LAYER.test(s.layer)) && segmentTouchesRegion(s, region)).length;
+    out.push({ region, rooms: names, wallSegments });
+  }
+  // mais divisões primeiro; empate → da esquerda para a direita, de cima para baixo
+  return out.sort((a, b) => b.rooms.length - a.rooms.length || a.region.minX - b.region.minX || b.region.maxY - a.region.maxY);
+}
+
+/**
+ * Layers que distinguem cada planta das outras (ex.: só uma tem "arq_demolir" → é a planta
+ * de alterações). Devolve, por candidata, até `max` layers presentes nela e ausentes noutra.
+ */
+export function distinctiveLayers(d: Pick<DxfDrawing, "segments" | "texts">, regions: Region[], max = 3): string[][] {
+  const counts = regions.map((r) => {
+    const m = new Map<string, number>();
+    for (const s of d.segments) if (segmentTouchesRegion(s, r)) m.set(s.layer, (m.get(s.layer) ?? 0) + 1);
+    for (const t of d.texts) if (inRegion(t.at, r)) m.set(t.layer, (m.get(t.layer) ?? 0) + 1);
+    return m;
+  });
+  return counts.map((m, i) =>
+    [...m]
+      .filter(([layer, n]) => n >= 8 && counts.some((o, j) => j !== i && (o.get(layer) ?? 0) < Math.max(2, n * 0.1)))
+      .sort((a, b) => b[1] - a[1])
+      .map(([layer]) => layer.replace(HATCH_SUFFIX, ""))
+      .filter((l, k, all) => all.indexOf(l) === k)
+      .slice(0, max),
+  );
+}

@@ -15,6 +15,8 @@ import {
   parseDxf,
   segmentTouchesRegion,
   upgradeLayerMeta,
+  findPlanCandidates,
+  distinctiveLayers,
   type Region,
 } from "../src/index.ts";
 
@@ -92,6 +94,24 @@ describe("tramas", () => {
   it("contornos de tramas são visíveis e com snap por defeito", () => {
     assert.equal(defaultVisibleLayer("arq_tramas_claras [trama]"), true);
     assert.equal(defaultSnapLayer("arq_estereotomia [trama]"), true);
+  });
+});
+
+describe("deteção das plantas", () => {
+  const isRoom = (t: string) => looksLikeRoomName(t) && guessRoomType(t) !== null;
+  it("encontra as duas plantas pelos nomes das divisões e ignora o resto do projeto", () => {
+    const c = findPlanCandidates(d, isRoom);
+    assert.equal(c.length, 2);
+    assert.ok(c[0]!.region.minX < 0 && c[0]!.region.maxX < 20, "a planta A vem primeiro (mais à esquerda)");
+    assert.ok(c[1]!.region.minX > 25);
+    assert.deepEqual(c[0]!.rooms, ["Sala de estar/jantar", "Quarto 1", "Quarto 2"]);
+    assert.ok(c[0]!.wallSegments > 10);
+  });
+
+  it("assinala o que distingue cada versão", () => {
+    const c = findPlanCandidates(d, isRoom);
+    const dist = distinctiveLayers(d, c.map((x) => x.region));
+    assert.equal(dist.length, 2);
   });
 });
 

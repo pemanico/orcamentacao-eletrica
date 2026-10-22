@@ -1060,3 +1060,48 @@ button.danger.solid {
 .layer-table td:first-child {
   width: auto;
 }
+
+/* plantas encontradas no DXF */
+.candidates {
+  display: grid;
+  gap: 0.5rem;
+}
+.candidate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  text-align: left;
+  padding: 0.45rem;
+}
+.candidate img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #eef0f3;
+  border-radius: 4px;
+}
+.candidate:hover {
+  border-color: var(--accent);
+}
+.cand-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.cand-diff {
+  font-size: 0.75rem;
+  color: #a1530b;
+}
+.candidate-mark rect {
+  fill: rgba(232, 163, 23, 0.08);
+  stroke: var(--accent);
+}
+.candidate-mark text {
+  fill: #a1530b;
+  font-weight: 700;
+  font-family: Arial, sans-serif;
+}
+.dxf-setup .panel {
+  overflow-y: auto;
+}
