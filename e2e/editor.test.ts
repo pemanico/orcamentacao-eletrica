@@ -146,4 +146,20 @@ describe("F1 — planta", () => {
     await page.keyboard.press("Control+z");
     await page.locator(".panel").getByText("33,60 m²").waitFor();
   });
+
+  it("parede diagonal com orto ligado: o canto da planta ganha ao orto", async () => {
+    await page.keyboard.press("w");
+    await page.locator(".statusbar").getByText("orto: ligado").waitFor();
+    const a = at(10, 8);
+    const b = at(13, 5); // 3 m × 3 m → 4,24 m a 45°
+    await clickAt({ x: a.x + 1, y: a.y + 1 });
+    await clickAt({ x: b.x - 1.5, y: b.y + 1 });
+    await page.keyboard.press("Escape");
+    await page.getByText(/^5 paredes/).waitFor();
+
+    await page.keyboard.press("v");
+    await clickAt(at(11.5, 6.5)); // meio da parede diagonal
+    await page.getByText("Comprimento: 4,24 m").waitFor();
+    if (shots) await page.screenshot({ path: join(shots, "diagonal.png") });
+  });
 });

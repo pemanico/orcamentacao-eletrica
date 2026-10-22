@@ -63,7 +63,7 @@ recebe um aviso de conflito em vez de apagar o trabalho do primeiro.
 | Tecla | Ação |
 | --- | --- |
 | V / C / W / P / J / D | Selecionar / Calibrar / Parede / Porta / Janela / Divisão |
-| O | Liga/desliga orto (Shift inverte temporariamente) |
+| O | Liga/desliga orto (Shift inverte temporariamente). Com orto ligado, um canto ou uma linha diagonal da planta continuam a ganhar ao orto, por isso as paredes diagonais traçam-se de canto a canto |
 | Alt (manter) | Desliga o snap |
 | Espaço + arrastar, botão do meio | Mover a vista |
 | Roda do rato | Zoom no cursor |

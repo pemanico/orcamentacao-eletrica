@@ -56,7 +56,18 @@ const DEFAULT_WIDTH: Record<OpeningKind, number> = { porta: 0.8, janela: 1.2 };
 
 const uid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 const parseNum = (s: string) => Number(s.replace(",", ".").trim());
-const isTyping = (t: EventTarget | null) =>
+/** Distância de p à reta (infinita) que contém o segmento. */
+const distToLine = (p: Point, s: { a: Point; b: Point }) => {
+  const len = dist(s.a, s.b);
+  if (len === 0) return dist(p, s.a);
+  return Math.abs((s.b.x - s.a.x) * (s.a.y - p.y) - (s.a.x - p.x) * (s.b.y - s.a.y)) / len;
+};
+/** Ângulo do traço em graus (0–180, sentido anti-horário como numa planta). */
+const angleDeg = (a: Point, b: Point) => {
+  const d = (Math.atan2(a.y - b.y, b.x - a.x) * 180) / Math.PI;
+  return Math.round(((d % 180) + 180) % 180);
+};
+const isTyping =(t: EventTarget | null) =>
   t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
 
 export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
@@ -136,7 +147,12 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
 
   const snapPoint = (raw: Point, from: Point | null): SnapResult => {
     if (mods.alt) return { point: raw, kind: "livre" };
-    if (!from || !orthoOn) return snapIndex.snap(raw, tol, extraPoints);
+    const free = snapIndex.snap(raw, tol, extraPoints);
+    if (!from || !orthoOn) return free;
+    // Um canto real ganha ao orto: assim as paredes diagonais ficam com os extremos certos.
+    if (free.kind === "extremo") return free;
+    // Linha do PDF que passa pelo ponto anterior (parede diagonal): segue-a em vez de forçar H/V.
+    if (free.kind === "segmento" && free.segment && distToLine(from, free.segment) <= tol) return free;
     // orto: fixa o eixo dominante a partir do ponto anterior e usa o snap só no eixo livre
     const horizontal = Math.abs(raw.x - from.x) >= Math.abs(raw.y - from.y);
     const locked = horizontal ? { x: raw.x, y: from.y } : { x: from.x, y: raw.y };
@@ -633,7 +649,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
                 ))}
                 {lastDraft && cursor && scale && (
                   <text x={(lastDraft.x + cursor.point.x) / 2} y={(lastDraft.y + cursor.point.y) / 2 - fs * 0.5} fontSize={fs} textAnchor="middle" className="draft-len">
-                    {formatM(unitsToMeters(dist(lastDraft, cursor.point), scale))} m
+                    {formatM(unitsToMeters(dist(lastDraft, cursor.point), scale))} m · {angleDeg(lastDraft, cursor.point)}°
                   </text>
                 )}
               </g>
