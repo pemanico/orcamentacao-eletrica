@@ -1,10 +1,12 @@
-import type { FloorState, Issue, RuleRow, RuleState, RuleTableId } from "@orc/core";
+import type { FloorState, Issue, ProjectStatus, RuleRow, RuleState, RuleTableId } from "@orc/core";
 
 export interface Project {
   id: string;
   name: string;
   client: string;
   address: string;
+  status: ProjectStatus;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,8 +25,17 @@ export interface FloorSummary {
   errorCount: number;
 }
 
+export interface ProjectEvent {
+  kind: "criado" | "estado" | "arquivado" | "desarquivado";
+  from: ProjectStatus | null;
+  to: ProjectStatus | null;
+  note: string;
+  at: string;
+}
+
 export interface ProjectDetail extends Project {
   floors: FloorSummary[];
+  events: ProjectEvent[];
 }
 
 export interface Floor {
@@ -77,7 +88,12 @@ const json = (method: string, data: unknown): RequestInit => ({
 });
 
 export const api = {
-  listProjects: () => call<Project[]>("/api/projects"),
+  listProjects: (archived = false) =>
+    call<{ projects: Project[]; counts: { active: number; archived: number } }>(`/api/projects${archived ? "?arquivados=1" : ""}`),
+  setProjectStatus: (id: string, to: ProjectStatus, note = "") => call<Project>(`/api/projects/${id}/status`, json("POST", { to, note })),
+  archiveProject: (id: string, archived: boolean) => call<Project>(`/api/projects/${id}/archive`, json("POST", { archived })),
+  deleteProject: (id: string, confirmName: string) =>
+    call<{ ok: true; deletedFloors: number }>(`/api/projects/${id}`, json("DELETE", { confirmName })),
   createProject: (p: { name: string; client: string; address: string }) =>
     call<Project>("/api/projects", json("POST", p)),
   getProject: (id: string) => call<ProjectDetail>(`/api/projects/${id}`),

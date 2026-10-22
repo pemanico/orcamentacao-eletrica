@@ -41,7 +41,21 @@ export function openDb(file: string) {
       updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
     CREATE INDEX IF NOT EXISTS floors_project ON floors(project_id);
+    CREATE TABLE IF NOT EXISTS project_events (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      kind        TEXT NOT NULL,           -- 'estado' | 'arquivado' | 'desarquivado' | 'criado'
+      from_status TEXT,
+      to_status   TEXT,
+      note        TEXT NOT NULL DEFAULT '',
+      at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    );
+    CREATE INDEX IF NOT EXISTS project_events_project ON project_events(project_id, at);
   `);
+  // migrações de colunas (bases de dados criadas por versões anteriores)
+  const cols = (db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("status")) db.exec("ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'levantamento'");
+  if (!cols.includes("archived_at")) db.exec("ALTER TABLE projects ADD COLUMN archived_at TEXT");
   return db;
 }
 
@@ -52,8 +66,20 @@ export interface ProjectRow {
   name: string;
   client: string;
   address: string;
+  status: string;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProjectEventRow {
+  id: number;
+  project_id: string;
+  kind: string;
+  from_status: string | null;
+  to_status: string | null;
+  note: string;
+  at: string;
 }
 
 export interface FloorRow {

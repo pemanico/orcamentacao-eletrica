@@ -45,7 +45,8 @@ describe("API", () => {
     assert.equal(r.status, 201);
     projectId = r.body.id;
     const list = await req("GET", "/api/projects");
-    assert.equal(list.body.length, 1);
+    assert.equal(list.body.projects.length, 1);
+    assert.equal(list.body.projects[0].status, "levantamento");
   });
 
   it("valida o nome do projeto", async () => {

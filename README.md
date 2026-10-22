@@ -87,6 +87,17 @@ recebe um aviso de conflito em vez de apagar o trabalho do primeiro.
 Com **Selecionar**, um elemento selecionado mostra pegas que podes arrastar para o
 corrigir (extremos de paredes, cantos de divisões).
 
+## Projetos: estados, arquivar e apagar
+
+Cada projeto segue o workflow **Levantamento → Orçamento → Enviado → Adjudicado → Em obra →
+Concluído**, com **Perdido** a partir de Enviado. Cada mudança fica no histórico do projeto.
+É possível recuar um passo para corrigir um engano.
+
+- **Arquivar** tira o projeto da lista sem perder nada e não muda o estado. É reversível.
+- **Apagar** é definitivo (projeto, pisos e PDFs) e exige escrever o nome do projeto. Está
+  bloqueado para projetos Adjudicados, Em obra ou Concluídos: têm o histórico real que serve
+  para calibrar as regras, por isso arquivam-se.
+
 ## Regras (F0)
 
 Menu **Regras**: cinco tabelas (defaults por divisão, tipos de circuito, equipamentos, mão

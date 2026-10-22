@@ -236,4 +236,34 @@ describe("F1 — planta", () => {
     assert.equal(await card.getByText(/ 0 KB/).count(), 0, "tamanho não pode ser 0 KB");
     if (shots) await page.screenshot({ path: join(shots, "inicio.png"), fullPage: true });
   });
+
+  it("workflow: avançar estados, histórico, arquivar e apagar com confirmação do nome", async () => {
+    await page.locator(".menu").getByRole("link", { name: "Projetos" }).click();
+    await page.getByRole("cell", { name: "Teste E2E" }).click();
+    await page.waitForURL(/#\/projeto\//);
+    await page.locator(".stepper li.current").getByText("Levantamento").waitFor();
+
+    await page.getByRole("button", { name: "Avançar para Orçamento" }).click();
+    await page.getByRole("button", { name: "Avançar para Enviado" }).click();
+    await page.locator(".stepper li.current").getByText("Enviado").waitFor();
+    await page.getByRole("button", { name: "Marcar como perdido" }).click();
+    await page.locator(".stepper li.lost").getByText("Perdido").waitFor();
+    await page.locator(".history").getByText("Enviado → Perdido").waitFor();
+    if (shots) await page.screenshot({ path: join(shots, "projeto-workflow.png"), fullPage: true });
+
+    await page.getByRole("button", { name: "Arquivar" }).click();
+    await page.getByRole("button", { name: "Desarquivar" }).waitFor();
+    await page.locator(".menu").getByRole("link", { name: "Projetos" }).click();
+    await page.getByText("Ainda não há projetos.").waitFor();
+    await page.locator(".tabs").getByRole("link", { name: /Arquivados/ }).click();
+    await page.getByRole("cell", { name: "Teste E2E" }).click();
+
+    await page.getByRole("button", { name: "Apagar projeto…" }).click();
+    const confirm = page.getByRole("button", { name: "Apagar definitivamente" });
+    assert.equal(await confirm.isDisabled(), true);
+    await page.getByLabel("Para confirmar, escreve o nome do projeto").fill("Teste E2E");
+    await confirm.click();
+    await page.waitForURL(new RegExp(`${base.replace(/[.:/]/g, "\\$&")}/#/$`));
+    await page.getByText("Ainda não há projetos.").waitFor();
+  });
 });

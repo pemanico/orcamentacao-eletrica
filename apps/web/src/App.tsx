@@ -27,6 +27,7 @@ export function App() {
     return <RulesPage key={t} tableId={t} />;
   }
   if (hash === "#/dados") return <DataPage />;
+  if (hash === "#/arquivados") return <ProjectsPage key="arq" archived />;
   if (floor) return <EditorPage key={floor[1]} floorId={floor[1]!} />;
   if (project) return <ProjectPage key={project[1]} projectId={project[1]!} />;
   return <ProjectsPage />;
