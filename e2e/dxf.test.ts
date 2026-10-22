@@ -137,6 +137,29 @@ describe("DXF", () => {
     if (shots) await p.screenshot({ path: join(shots, "dxf-editor.png") });
   });
 
+  it("'Só paredes e nomes' mantém as divisórias que só existem como trama", async () => {
+    await p.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
+    await p.getByRole("button", { name: "Só paredes e nomes" }).click();
+    assert.equal(await p.getByLabel("Ver arq_tramas_claras [trama]", { exact: true }).isChecked(), true);
+    assert.equal(await p.getByLabel("Ver arq_corte", { exact: true }).isChecked(), true);
+    assert.equal(await p.getByLabel("Ver arq_mobiliario", { exact: true }).isChecked(), false);
+  });
+
+  it("piso configurado por uma versão antiga ganha snap nas tramas ao abrir", async () => {
+    const floorId = p.url().split("/").pop()!;
+    // simula a configuração gravada antes da correção (sem layerVersion e com as tramas escondidas)
+    await fetch(`${base}/api/floors/${floorId}/source`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hidden: ["arq_tramas_claras [trama]"], snap: ["arq_corte"], layerVersion: 1 }),
+    });
+    await p.reload();
+    await p.locator(".layer-panel").waitFor();
+    await p.getByLabel("Snap arq_tramas_claras [trama]", { exact: true }).waitFor();
+    assert.equal(await p.getByLabel("Snap arq_tramas_claras [trama]", { exact: true }).isChecked(), true);
+    assert.equal(await p.getByLabel("Ver arq_tramas_claras [trama]", { exact: true }).isChecked(), true);
+  });
+
   it("as layers escolhidas ficam guardadas e não retiram a aprovação", async () => {
     await p.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
     await p.getByLabel("Ver arq_vista 1").uncheck();

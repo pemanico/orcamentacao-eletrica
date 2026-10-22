@@ -1,3 +1,4 @@
+declare const __BUILD__: string;
 import { useEffect, useState } from "react";
 import { api, type DataInfo } from "../api";
 import { Shell } from "../Shell";
@@ -61,6 +62,9 @@ export function DataPage() {
               Fazer cópia de segurança agora
             </button>
             {backupMsg && <p className={backupMsg.ok ? "ok" : "error"}>{backupMsg.text}</p>}
+            <p className="muted small" data-testid="build">
+              Versão da app: {typeof __BUILD__ === "string" ? __BUILD__ : "dev"}
+            </p>
             <p className="muted small">
               A cópia inclui a base de dados (com as regras) e os PDFs. Fica no mesmo disco: copia a pasta das cópias para o OneDrive ou uma pen
               de vez em quando.

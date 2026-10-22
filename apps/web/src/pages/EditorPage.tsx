@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { defaultSnapLayer, defaultVisibleLayer, parseDxf, type DxfDrawing, type DxfSourceMeta, type DxfUnit, type Region } from "@orc/core";
+import {
+  DXF_LAYER_VERSION,
+  defaultSnapLayer,
+  defaultVisibleLayer,
+  parseDxf,
+  upgradeLayerMeta,
+  type DxfDrawing,
+  type DxfSourceMeta,
+  type DxfUnit,
+  type Region,
+} from "@orc/core";
 import { api, type Floor } from "../api";
 import { loadPlan, type LoadedPlan } from "../pdf";
 import { buildDxfPlan, layersInRegion } from "../dxfPlan";
@@ -9,7 +19,7 @@ import { LayerPanel } from "../editor/LayerPanel";
 import { Shell, type Crumb } from "../Shell";
 
 const completeMeta = (m: Floor["sourceMeta"]): DxfSourceMeta | null =>
-  m && m.region && m.unit ? { region: m.region, unit: m.unit, hidden: m.hidden ?? [], snap: m.snap ?? [] } : null;
+  m && m.region && m.unit ? { region: m.region, unit: m.unit, hidden: m.hidden ?? [], snap: m.snap ?? [], layerVersion: m.layerVersion } : null;
 
 export function EditorPage({ floorId }: { floorId: string }) {
   const [floor, setFloor] = useState<Floor | null>(null);
@@ -52,6 +62,16 @@ export function EditorPage({ floorId }: { floorId: string }) {
   useEffect(() => () => dxfPlan && URL.revokeObjectURL(dxfPlan.imageUrl), [dxfPlan]);
   const regionLayers = useMemo(() => (drawing && meta ? layersInRegion(drawing, meta.region) : []), [drawing, JSON.stringify(meta?.region)]);
 
+  // pisos configurados antes de haver layers "[trama]": atualiza uma vez e grava
+  useEffect(() => {
+    if (!drawing || !meta || !floor) return;
+    const up = upgradeLayerMeta(meta, layersInRegion(drawing, meta.region).map((l) => l.name));
+    if (!up.changed) return;
+    setFloor({ ...floor, sourceMeta: up.meta });
+    api.saveFloorSource(floorId, { hidden: up.meta.hidden, snap: up.meta.snap, layerVersion: up.meta.layerVersion }).catch((e: Error) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawing, meta?.layerVersion, floor?.id]);
+
   async function confirmRegion(region: Region, unit: DxfUnit) {
     const layers = layersInRegion(drawing!, region).map((l) => l.name);
     const f = await api.saveFloorSource(floorId, {
@@ -59,6 +79,7 @@ export function EditorPage({ floorId }: { floorId: string }) {
       unit,
       hidden: layers.filter((n) => !defaultVisibleLayer(n)),
       snap: layers.filter(defaultSnapLayer),
+      layerVersion: DXF_LAYER_VERSION,
     });
     setFloor(f);
     setChoosing(false);

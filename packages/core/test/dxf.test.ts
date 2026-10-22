@@ -14,6 +14,7 @@ import {
   looksLikeRoomName,
   parseDxf,
   segmentTouchesRegion,
+  upgradeLayerMeta,
   type Region,
 } from "../src/index.ts";
 
@@ -77,6 +78,15 @@ describe("tramas", () => {
     const seg = d.segments.find((s) => s.layer === "arq_tramas_claras [trama]" && s.a.x < 20 && s.a.x === s.b.x && s.a.x === 10.6);
     assert.ok(seg, "a face da divisória em x = 10,6 m tem de existir");
     assert.equal(d.layers.some((l) => l.name === "arq_tramas [trama]"), false, "trama sem contorno não gera nada");
+  });
+
+  it("pisos configurados antes das tramas são atualizados uma vez", () => {
+    const old = { region: planA, unit: "m" as const, hidden: ["arq_tramas_claras [trama]", "arq_vista 1"], snap: ["arq_corte"] };
+    const up = upgradeLayerMeta(old, ["arq_corte", "arq_vista 1", "arq_tramas_claras [trama]", "arq_estereotomia [trama]"]);
+    assert.equal(up.changed, true);
+    assert.deepEqual(up.meta.snap, ["arq_corte", "arq_tramas_claras [trama]", "arq_estereotomia [trama]"]);
+    assert.deepEqual(up.meta.hidden, ["arq_vista 1"]);
+    assert.equal(upgradeLayerMeta(up.meta, []).changed, false, "só uma vez: depois respeita as escolhas do utilizador");
   });
 
   it("contornos de tramas são visíveis e com snap por defeito", () => {

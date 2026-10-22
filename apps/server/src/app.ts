@@ -45,6 +45,7 @@ const sourceMetaInput = z.object({
   unit: z.enum(["m", "cm", "mm"]).optional(),
   hidden: z.array(z.string().max(255)).max(2000).optional(),
   snap: z.array(z.string().max(255)).max(2000).optional(),
+  layerVersion: z.number().int().min(1).max(100).optional(),
 });
 
 const floorMetaInput = z.object({

@@ -541,4 +541,21 @@ export interface DxfSourceMeta {
   unit: DxfUnit;
   hidden: string[];
   snap: string[];
+  /** versão das regras de layers com que o piso foi configurado */
+  layerVersion?: number;
+}
+
+/** 2 = contornos das tramas como layers "[trama]" (out. 2026). */
+export const DXF_LAYER_VERSION = 2;
+
+/**
+ * Atualiza a configuração de layers de um piso configurado com uma versão anterior:
+ * as layers "[trama]" (que não existiam) passam a ser visíveis e com snap.
+ */
+export function upgradeLayerMeta(meta: DxfSourceMeta, regionLayers: string[]): { meta: DxfSourceMeta; changed: boolean } {
+  if ((meta.layerVersion ?? 1) >= DXF_LAYER_VERSION) return { meta, changed: false };
+  const tramas = regionLayers.filter(isHatchLayer);
+  const snap = [...new Set([...meta.snap, ...tramas])];
+  const hidden = meta.hidden.filter((n) => !isHatchLayer(n));
+  return { meta: { ...meta, snap, hidden, layerVersion: DXF_LAYER_VERSION }, changed: true };
 }

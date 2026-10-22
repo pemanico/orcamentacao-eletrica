@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isHatchLayer } from "@orc/core";
 import type { DxfLayerRow } from "../dxfPlan";
 
 /**
@@ -49,8 +50,13 @@ export function LayerPanel({
           <div className="row">
             <button
               className="small-btn"
-              onClick={() => onChange(layers.map((l) => l.name).filter((n) => !s.has(n) && !/texto|text/i.test(n)), snap)}
-              title="Esconde tudo exceto as layers de snap e os textos"
+              onClick={() =>
+                onChange(
+                  layers.map((l) => l.name).filter((n) => !s.has(n) && !isHatchLayer(n) && !/corte|parede|wall|texto|text/i.test(n)),
+                  snap,
+                )
+              }
+              title="Esconde tudo exceto paredes (incluindo as que só existem como trama) e textos"
             >
               Só paredes e nomes
             </button>
