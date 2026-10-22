@@ -574,3 +574,24 @@ label.check {
   font-size: 0.8rem;
   white-space: nowrap;
 }
+
+/* os teus dados */
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 0.9rem;
+}
+.facts dt {
+  color: var(--ink-2);
+  font-size: 0.82rem;
+}
+.facts dd {
+  margin: 0;
+  min-width: 0;
+}
+.path {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}

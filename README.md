@@ -36,8 +36,19 @@ Tudo fica na pasta `data/`:
 - `data/orcamentacao.db` — base de dados SQLite (projetos, pisos, geometria)
 - `data/pdfs/` — os PDFs importados
 
-**Faz cópia de segurança desta pasta.** Tem dados de clientes. Para usar outra pasta:
-`ORC_DATA_DIR=/caminho npm start`.
+Tudo é gravado automaticamente (o editor mostra "guardado" no canto inferior direito).
+A página inicial mostra onde está a base de dados, a última gravação e as cópias feitas.
+
+**Cópias de segurança:** botão "Fazer cópia de segurança agora" na página inicial. Cria
+`data/copias/copia-AAAAMMDD-HHMMSS/` com a base de dados e os PDFs. Como fica no mesmo
+disco, copia essa pasta para o OneDrive ou uma pen de vez em quando, ou põe as cópias
+diretamente no OneDrive (PowerShell):
+
+```powershell
+$env:ORC_BACKUP_DIR = "$env:OneDrive\orcamentacao-copias"; npm start
+```
+
+Para usar outra pasta de dados: `$env:ORC_DATA_DIR = "C:\caminho"; npm start`.
 
 ## Fluxo da F1
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { api, type Project } from "../api";
+import { api, type DataInfo, type Project } from "../api";
 import { go } from "../nav";
 
 export function ProjectsPage() {
@@ -8,9 +8,24 @@ export function ProjectsPage() {
   const [form, setForm] = useState({ name: "", client: "", address: "" });
   const [busy, setBusy] = useState(false);
 
+  const [info, setInfo] = useState<DataInfo | null>(null);
+  const [backupMsg, setBackupMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   useEffect(() => {
     api.listProjects().then(setProjects, (e: Error) => setError(e.message));
+    api.info().then(setInfo, () => setInfo(null));
   }, []);
+
+  async function backup() {
+    setBackupMsg(null);
+    try {
+      const r = await api.backup();
+      setBackupMsg({ ok: true, text: `Cópia criada em ${r.folder}` });
+      setInfo(await api.info());
+    } catch (err) {
+      setBackupMsg({ ok: false, text: `Não foi possível criar a cópia: ${(err as Error).message}` });
+    }
+  }
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -57,6 +72,7 @@ export function ProjectsPage() {
 
       <section className="card">
         <h2>Projetos</h2>
+        <p className="muted small">Tudo é gravado automaticamente. Clica num projeto para continuar onde ficaste.</p>
         {projects === null ? (
           <p className="muted">A carregar…</p>
         ) : projects.length === 0 ? (
@@ -84,6 +100,45 @@ export function ProjectsPage() {
           </table>
         )}
       </section>
+      {info && (
+        <section className="card data-card">
+          <h2>Os teus dados</h2>
+          <dl className="facts">
+            <dt>Base de dados</dt>
+            <dd className="path">{info.dbFile}</dd>
+            <dt>Conteúdo</dt>
+            <dd>
+              {info.projects} projeto(s) · {info.floors} piso(s) · {(info.dbBytes / 1024).toLocaleString("pt-PT", { maximumFractionDigits: 0 })} KB
+            </dd>
+            <dt>Última gravação</dt>
+            <dd>{info.lastSavedAt ? new Date(info.lastSavedAt).toLocaleString("pt-PT") : "—"}</dd>
+            <dt>Cópias de segurança</dt>
+            <dd>
+              {info.backupCount === 0 ? (
+                <span className="warn">Nenhuma ainda.</span>
+              ) : (
+                <>
+                  {info.backupCount} · última: {formatStamp(info.lastBackup)}
+                </>
+              )}
+              <div className="path muted">{info.backupDir}</div>
+            </dd>
+          </dl>
+          <button className="primary" onClick={backup}>
+            Fazer cópia de segurança agora
+          </button>
+          {backupMsg && <p className={backupMsg.ok ? "ok" : "error"}>{backupMsg.text}</p>}
+          <p className="muted small">
+            A cópia inclui a base de dados e os PDFs. Fica no mesmo disco: copia a pasta das cópias para o OneDrive ou uma pen de vez em quando.
+          </p>
+        </section>
+      )}
     </div>
   );
+}
+
+/** "copia-20261022-210809" → "22/10/2026 21:08" */
+function formatStamp(name: string | null) {
+  const m = name && /copia-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(name);
+  return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : (name ?? "—");
 }

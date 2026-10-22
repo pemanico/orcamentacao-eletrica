@@ -183,4 +183,17 @@ describe("F1 — planta", () => {
     await page.getByRole("button", { name: "? Ajuda" }).click();
     await page.locator(".tool-hint").waitFor();
   });
+
+  it("página inicial mostra onde estão os dados e faz a cópia de segurança", async () => {
+    await page.goto(base);
+    const card = page.locator(".data-card");
+    await card.getByText(/e2e\.db$/).first().waitFor();
+    await card.getByText(/1 projeto\(s\) · 1 piso\(s\)/).waitFor();
+    await card.getByText("Nenhuma ainda.").waitFor();
+    await card.getByRole("button", { name: "Fazer cópia de segurança agora" }).click();
+    await card.getByText(/^Cópia criada em/).waitFor();
+    await card.getByText(/^1 · última: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}/).waitFor();
+    assert.equal(await card.getByText(/ 0 KB/).count(), 0, "tamanho não pode ser 0 KB");
+    if (shots) await page.screenshot({ path: join(shots, "inicio.png"), fullPage: true });
+  });
 });

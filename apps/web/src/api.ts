@@ -41,6 +41,18 @@ export interface Floor {
   issues: Issue[];
 }
 
+export interface DataInfo {
+  dataDir: string;
+  dbFile: string;
+  dbBytes: number;
+  projects: number;
+  floors: number;
+  lastSavedAt: string | null;
+  backupDir: string;
+  lastBackup: string | null;
+  backupCount: number;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -88,4 +100,6 @@ export const api = {
     call<Floor>(`/api/floors/${id}`, json("PUT", data)),
   approveFloor: (id: string) => call<Floor>(`/api/floors/${id}/approve`, { method: "POST" }),
   pdfUrl: (id: string) => `/api/floors/${id}/pdf`,
+  info: () => call<DataInfo>("/api/info"),
+  backup: () => call<{ folder: string; dbBytes: number; backupCount: number }>("/api/backup", { method: "POST" }),
 };

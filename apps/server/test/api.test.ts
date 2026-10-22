@@ -1,6 +1,7 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -124,6 +125,30 @@ describe("API", () => {
     assert.equal(r.body.floors.length, 1);
     assert.equal(r.body.floors[0].roomCount, 1);
     assert.equal(r.body.floors[0].calibrated, true);
+  });
+
+  it("mostra onde estão os dados e faz cópias de segurança", async () => {
+    const info = await req("GET", "/api/info");
+    assert.equal(info.body.projects, 1);
+    assert.equal(info.body.floors, 1);
+    assert.ok(info.body.lastSavedAt);
+    assert.equal(info.body.backupCount, 0);
+
+    const b = await req("POST", "/api/backup");
+    assert.equal(b.status, 201);
+    assert.ok(b.body.dbBytes > 0);
+    const files = readdirSync(b.body.folder);
+    assert.deepEqual(files.sort(), ["orcamentacao.db", "pdfs"]);
+    assert.equal(readdirSync(join(b.body.folder, "pdfs")).length, 1);
+
+    // a cópia é uma base de dados válida com os mesmos dados
+    const copy = new DatabaseSync(join(b.body.folder, "orcamentacao.db"));
+    assert.equal((copy.prepare("SELECT COUNT(*) AS n FROM floors").get() as { n: number }).n, 1);
+    copy.close();
+
+    const again = await req("POST", "/api/backup");
+    assert.notEqual(again.body.folder, b.body.folder);
+    assert.equal((await req("GET", "/api/info")).body.backupCount, 2);
   });
 
   it("404 e 405", async () => {
