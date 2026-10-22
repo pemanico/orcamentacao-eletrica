@@ -10,6 +10,8 @@ import {
   canDeleteProject,
   canTransition,
   emptyFloorState,
+  PAGE_UNITS_PER_METER,
+  dxfToPage,
   floorStateSchema,
   validateFloor,
   type FloorState,
@@ -34,7 +36,19 @@ const statusInput = z.object({
   note: z.string().trim().max(500).default(""),
 });
 
+const regionSchema = z
+  .object({ minX: z.number().finite(), minY: z.number().finite(), maxX: z.number().finite(), maxY: z.number().finite() })
+  .refine((r) => r.maxX > r.minX && r.maxY > r.minY, "Região vazia");
+
+const sourceMetaInput = z.object({
+  region: regionSchema.optional(),
+  unit: z.enum(["m", "cm", "mm"]).optional(),
+  hidden: z.array(z.string().max(255)).max(2000).optional(),
+  snap: z.array(z.string().max(255)).max(2000).optional(),
+});
+
 const floorMetaInput = z.object({
+  kind: z.enum(["pdf", "dxf"]).default("pdf"),
   name: z.string().trim().min(1, "Nome do piso obrigatório").max(60),
   ceilingHeightM: z.coerce.number().min(2, "Pé-direito mínimo 2 m").max(6, "Pé-direito máximo 6 m"),
   pdfPage: z.coerce.number().int().min(1).default(1),
@@ -57,6 +71,8 @@ const floorDto = (r: FloorRow) => {
     ceilingHeightM: r.ceiling_height_m,
     pdfOriginalName: r.pdf_original_name,
     pdfPage: r.pdf_page,
+    sourceKind: r.source_kind as "pdf" | "dxf",
+    sourceMeta: r.source_meta ? (JSON.parse(r.source_meta) as Record<string, unknown>) : null,
     state,
     rev: r.rev,
     approvedAt: r.approved_at,
@@ -279,14 +295,20 @@ export function buildApp(opts: {
       if (!getProject(params.id!)) throw new HttpError(404, "Projeto não encontrado.");
       const meta = floorMetaInput.parse(Object.fromEntries(query));
       const buffer = await readBody(req, MAX_PDF_BYTES);
-      if (buffer.subarray(0, 5).toString("latin1") !== "%PDF-") throw new HttpError(400, "O ficheiro não é um PDF.");
+      if (meta.kind === "pdf" && buffer.subarray(0, 5).toString("latin1") !== "%PDF-") throw new HttpError(400, "O ficheiro não é um PDF.");
+      if (meta.kind === "dxf") {
+        const head = buffer.subarray(0, 64).toString("latin1");
+        if (head.startsWith("AutoCAD Binary DXF")) throw new HttpError(400, "DXF binário não suportado: exporta como DXF ASCII.");
+        if (head.startsWith("AC10")) throw new HttpError(400, "Isto é um DWG. Converte para DXF (ODA File Converter) e importa o DXF.");
+        if (!/^\s*0\s*\r?\n\s*SECTION/.test(head)) throw new HttpError(400, "O ficheiro não é um DXF.");
+      }
       const id = newId();
-      const file = `${id}.pdf`;
+      const file = `${id}.${meta.kind}`;
       writeFileSync(join(pdfDir, file), buffer);
       db.prepare(
-        `INSERT INTO floors (id, project_id, name, ceiling_height_m, pdf_file, pdf_original_name, pdf_page, state_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(id, params.id!, meta.name, meta.ceilingHeightM, file, meta.filename, meta.pdfPage, JSON.stringify(emptyFloorState()));
+        `INSERT INTO floors (id, project_id, name, ceiling_height_m, pdf_file, pdf_original_name, pdf_page, state_json, source_kind)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(id, params.id!, meta.name, meta.ceilingHeightM, file, meta.filename, meta.pdfPage, JSON.stringify(emptyFloorState()), meta.kind);
       touchProject(params.id!);
       res.statusCode = 201;
       return floorDto(getFloor(id)!);
@@ -296,12 +318,50 @@ export function buildApp(opts: {
       if (!row) throw new HttpError(404, "Piso não encontrado.");
       return floorDto(row);
     })
+    /**
+     * Fonte de um piso DXF: região, unidades e layers.
+     * Região e unidades definem a escala, por isso só se mudam com o piso vazio.
+     * Layers (ver/snap) são só visualização: não mexem na revisão nem na aprovação.
+     */
+    .on("PUT", "/api/floors/:id/source", async ({ req, params }) => {
+      const row = getFloor(params.id!);
+      if (!row) throw new HttpError(404, "Piso não encontrado.");
+      if (row.source_kind !== "dxf") throw new HttpError(400, "Só os pisos importados de DXF têm esta configuração.");
+      const input = sourceMetaInput.parse(await readJson(req));
+      const current = (row.source_meta ? JSON.parse(row.source_meta) : {}) as Record<string, unknown>;
+      const next = { ...current, ...Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)) };
+      const geometryChange = input.region !== undefined || input.unit !== undefined;
+      const state = JSON.parse(row.state_json) as FloorState;
+      if (geometryChange) {
+        if (state.walls.length || state.rooms.length || state.openings.length) {
+          throw new HttpError(409, "Já há paredes ou divisões traçadas. Para mudar a região ou as unidades, apaga-as primeiro.");
+        }
+        if (!next.region || !next.unit) throw new HttpError(400, "Indica a região e as unidades.");
+        const t = dxfToPage(next.region as z.infer<typeof regionSchema>, next.unit as "m" | "cm" | "mm");
+        const widthM = t.width / PAGE_UNITS_PER_METER;
+        state.scale = {
+          metersPerUnit: 1 / PAGE_UNITS_PER_METER,
+          refA: { x: 0, y: 0 },
+          refB: { x: t.width, y: 0 },
+          refMeters: Math.round(widthM * 1000) / 1000,
+          stampDenominator: 100,
+        };
+        db.prepare(
+          `UPDATE floors SET source_meta = ?, state_json = ?, rev = rev + 1, approved_at = NULL,
+             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
+        ).run(JSON.stringify(next), JSON.stringify(state), row.id);
+        touchProject(row.project_id);
+      } else {
+        db.prepare("UPDATE floors SET source_meta = ? WHERE id = ?").run(JSON.stringify(next), row.id);
+      }
+      return floorDto(getFloor(row.id)!);
+    })
     .on("GET", "/api/floors/:id/pdf", ({ params, res }) => {
       const row = getFloor(params.id!);
       const path = row && join(pdfDir, row.pdf_file);
-      if (!row || !path || !existsSync(path)) throw new HttpError(404, "PDF não encontrado.");
+      if (!row || !path || !existsSync(path)) throw new HttpError(404, "Ficheiro da planta não encontrado.");
       res.writeHead(200, {
-        "Content-Type": "application/pdf",
+        "Content-Type": row.source_kind === "dxf" ? "application/dxf; charset=utf-8" : "application/pdf",
         "Content-Length": statSync(path).size,
         "Cache-Control": "private, max-age=3600",
       });

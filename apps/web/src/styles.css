@@ -1009,3 +1009,54 @@ button.danger.solid {
 .chip.active .muted {
   color: #c9d1dc;
 }
+
+/* ---------- DXF ---------- */
+.dxf-setup {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  height: 100%;
+  overflow: hidden;
+}
+.region-rect {
+  fill: rgba(232, 163, 23, 0.12);
+  stroke: var(--accent);
+}
+.layer-panel {
+  background: #f8f9fb;
+  margin: 0 -0.9rem;
+  padding: 0.6rem 0.9rem 0.8rem !important;
+}
+.layer-filter {
+  width: 100%;
+  margin: 0.3rem 0;
+  font-size: 0.82rem;
+}
+.layer-table {
+  font-size: 0.8rem;
+}
+.layer-table td:first-child {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.layer-table td:not(:first-child),
+.layer-table th:not(:first-child) {
+  text-align: center;
+  width: 42px;
+}
+.layer-table tbody {
+  display: block;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.layer-table thead,
+.layer-table tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+.layer-table th:first-child,
+.layer-table td:first-child {
+  width: auto;
+}

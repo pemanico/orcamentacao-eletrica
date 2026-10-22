@@ -1,6 +1,6 @@
 // build "legacy": inclui polyfills (ex.: Map.getOrInsertComputed) que browsers menos recentes não têm
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
-import { classifyPdf, extractSegments, findScaleStamps, type PdfOps, type PdfVerdict, type Segment } from "@orc/core";
+import { classifyPdf, extractSegments, findScaleStamps, looksLikeRoomName, type PdfOps, type PdfVerdict, type PlanLabel, type Segment } from "@orc/core";
 
 // o worker é copiado para dist/ pelo script de build
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -16,6 +16,8 @@ export interface LoadedPlan {
   verdict: PdfVerdict;
   stampDenominators: number[];
   pageCount: number;
+  /** textos da planta que parecem nomes de divisões (coordenadas de página) */
+  labels?: PlanLabel[];
 }
 
 /** Lado máximo do canvas de fundo (limite prático dos browsers ~16k). */
@@ -66,7 +68,18 @@ export async function loadPlan(url: string, pageNumber = 1): Promise<LoadedPlan>
   await task.destroy();
 
   const str = text.items.map((i) => ("str" in i ? i.str : "")).join(" ");
+  // posição de cada texto em coordenadas de página (centro aproximado da palavra)
+  const vt = viewport.transform;
+  const labels: PlanLabel[] = [];
+  for (const it of text.items) {
+    if (!("str" in it) || !looksLikeRoomName(it.str.trim())) continue;
+    const [, , , , e, f] = it.transform as number[];
+    const cx = e! + (it.width ?? 0) / 2;
+    const cy = f! + (it.height ?? 0) / 2;
+    labels.push({ text: it.str.trim(), at: { x: vt[0]! * cx + vt[2]! * cy + vt[4]!, y: vt[1]! * cx + vt[3]! * cy + vt[5]! } });
+  }
   return {
+    labels,
     width: viewport.width,
     height: viewport.height,
     imageUrl: URL.createObjectURL(blob),

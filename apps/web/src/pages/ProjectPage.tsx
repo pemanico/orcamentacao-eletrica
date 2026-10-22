@@ -2,6 +2,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, type ProjectDetail } from "../api";
 import { go } from "../nav";
 import { inspectPdf } from "../pdf";
+import { guessUnits, parseDxf } from "@orc/core";
+
+const isDxfFile = (f: File) => /\.dxf$/i.test(f.name);
 import { Shell } from "../Shell";
 import { StatusBadge } from "../StatusBadge";
 import {
@@ -47,6 +50,28 @@ export function ProjectPage({ projectId }: { projectId: string }) {
     setCheck("A analisar o PDF…");
     try {
       const page = Number(meta.pdfPage) || 1;
+      if (isDxfFile(file)) {
+        // valida no browser antes de enviar: o servidor só guarda o ficheiro
+        const d = parseDxf(await file.text());
+        const g = guessUnits(d);
+        setCheck(
+          `${d.segments.length.toLocaleString("pt-PT")} linhas · ${d.layers.length} layers · unidades prováveis: ${g.unit}` +
+            (g.headerDisagrees ? " (o cabeçalho diz outra coisa — vais confirmar a seguir)" : ""),
+        );
+        const floor = await api.createFloor(projectId, file, {
+          name: meta.name,
+          ceilingHeightM: Number(meta.ceilingHeightM.replace(",", ".")),
+          pdfPage: 1,
+          kind: "dxf",
+        });
+        go(`/piso/${floor.id}`);
+        return;
+      }
+      if (/\.dwg$/i.test(file.name)) {
+        setCheck(null);
+        setError("O DWG é um formato fechado. Converte-o para DXF com o ODA File Converter (gratuito) e importa o DXF.");
+        return;
+      }
       // Rejeita digitalizações antes de enviar: o servidor não analisa o PDF.
       const info = await inspectPdf(await file.arrayBuffer(), page);
       if (!info.verdict.ok) {
@@ -167,13 +192,14 @@ export function ProjectPage({ projectId }: { projectId: string }) {
       </section>
 
       <section className="card">
-        <h2>Importar planta (PDF do CAD)</h2>
+        <h2>Importar planta</h2>
+        <p className="muted small">PDF exportado do CAD, ou DXF (casas novas: pede o DXF ao arquiteto; um DWG converte-se com o ODA File Converter).</p>
         <form className="form-row" onSubmit={addFloor}>
           <label className="grow">
             Ficheiro PDF
             <input
               type="file"
-              accept="application/pdf,.pdf"
+              accept="application/pdf,.pdf,.dxf,.dwg"
               onChange={(e) => {
                 setFile(e.target.files?.[0] ?? null);
                 setCheck(null);
@@ -189,10 +215,12 @@ export function ProjectPage({ projectId }: { projectId: string }) {
             Pé-direito (m)
             <input required inputMode="decimal" value={meta.ceilingHeightM} onChange={(e) => setMeta({ ...meta, ceilingHeightM: e.target.value })} />
           </label>
-          <label className="narrow">
-            Página
-            <input inputMode="numeric" value={meta.pdfPage} onChange={(e) => setMeta({ ...meta, pdfPage: e.target.value })} />
-          </label>
+          {!(file && isDxfFile(file)) && (
+            <label className="narrow">
+              Página
+              <input inputMode="numeric" value={meta.pdfPage} onChange={(e) => setMeta({ ...meta, pdfPage: e.target.value })} />
+            </label>
+          )}
           <button className="primary" disabled={busy || !file}>
             Importar
           </button>

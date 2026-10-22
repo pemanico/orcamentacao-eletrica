@@ -1,4 +1,4 @@
-# Orçamentação Elétrica — F1 (planta) + F0 (regras)
+# Orçamentação Elétrica — F1 (planta: PDF e DXF) + F0 (regras)
 
 Aplicação local, de uso pessoal, para orçamentar instalações elétricas residenciais
 monofásicas a partir do PDF do arquiteto. Esta versão implementa a **fase F1** do plano
@@ -86,6 +86,28 @@ recebe um aviso de conflito em vez de apagar o trabalho do primeiro.
 
 Com **Selecionar**, um elemento selecionado mostra pegas que podes arrastar para o
 corrigir (extremos de paredes, cantos de divisões).
+
+## Importar DXF (casas novas)
+
+Além do PDF, um piso pode vir de um **DXF**: pede-o ao arquiteto. Um **DWG** não se lê
+diretamente (formato fechado): converte-o com o **ODA File Converter** (gratuito,
+Output = `DXF`, versão `ACAD2018`) ou, no AutoCAD/BricsCAD, *Guardar como → DXF*.
+
+1. **Importar** o `.dxf` na página do projeto.
+2. **Escolher a planta**: o DXF é o projeto inteiro (implantação, versões, alçados, cortes).
+   Arrasta um retângulo à volta da planta do piso.
+3. **Confirmar as unidades**: são deduzidas das cotas do desenho, não do cabeçalho (que pode
+   estar errado: no primeiro DXF real dizia centímetros e o desenho estava em metros).
+   A medida da planta escolhida aparece ao lado, para conferires.
+4. **Editor**: escala exata (não há calibração). Painel **Layers do DXF**: *Ver* mostra no
+   fundo, *Snap* define onde o cursor agarra (por defeito as layers de paredes, ex.
+   `arq_corte`). "Só paredes e nomes" limpa o fundo.
+5. **Divisões**: ao fechares uma divisão à volta de um nome do arquiteto (ex. "Quarto 2",
+   "IS.1", "Sala de estar/jantar"), o nome e o tipo ficam preenchidos. Também funciona com
+   PDFs que tenham o texto da planta.
+
+A região e as unidades só se mudam com o piso vazio (definem a escala). As layers mudam-se
+a qualquer momento sem retirar a aprovação.
 
 ## Projetos: estados, arquivar e apagar
 

@@ -56,6 +56,9 @@ export function openDb(file: string) {
   const cols = (db.prepare("PRAGMA table_info(projects)").all() as { name: string }[]).map((c) => c.name);
   if (!cols.includes("status")) db.exec("ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'levantamento'");
   if (!cols.includes("archived_at")) db.exec("ALTER TABLE projects ADD COLUMN archived_at TEXT");
+  const fcols = (db.prepare("PRAGMA table_info(floors)").all() as { name: string }[]).map((c) => c.name);
+  if (!fcols.includes("source_kind")) db.exec("ALTER TABLE floors ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'pdf'");
+  if (!fcols.includes("source_meta")) db.exec("ALTER TABLE floors ADD COLUMN source_meta TEXT");
   return db;
 }
 
@@ -90,6 +93,10 @@ export interface FloorRow {
   pdf_file: string;
   pdf_original_name: string;
   pdf_page: number;
+  /** 'pdf' | 'dxf'. O ficheiro original está em data/pdfs/<pdf_file> (nome histórico da pasta). */
+  source_kind: string;
+  /** DXF: região, unidades e layers (JSON) */
+  source_meta: string | null;
   state_json: string;
   rev: number;
   approved_at: string | null;

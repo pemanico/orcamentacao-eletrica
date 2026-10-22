@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { guessRoomType, labelForPolygon } from "@orc/core";
 import {
   ROOM_TYPES,
   ROOM_TYPE_LABEL,
@@ -70,7 +71,17 @@ const angleDeg = (a: Point, b: Point) => {
 const isTyping =(t: EventTarget | null) =>
   t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
 
-export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
+export function Editor({
+  floor,
+  plan,
+  sourcePanel,
+}: {
+  floor: Floor;
+  plan: LoadedPlan;
+  /** painel da fonte (ex.: layers do DXF), mostrado no topo do painel lateral */
+  sourcePanel?: ReactNode;
+}) {
+  const isDxf = floor.sourceKind === "dxf";
   const { state, commit, undo, redo, canUndo, canRedo } = useHistory<FloorState>(floor.state);
   const [preview, setPreview] = useState<FloorState | null>(null); // estado durante um arrasto
   const shown = preview ?? state;
@@ -86,7 +97,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
   const [mods, setMods] = useState({ shift: false, alt: false, space: false });
   const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [calibDialog, setCalibDialog] = useState<{ a: Point; b: Point } | null>(null);
-  const [roomDialog, setRoomDialog] = useState<{ polygon: Point[]; editId?: string } | null>(null);
+  const [roomDialog, setRoomDialog] = useState<{ polygon: Point[]; suggestion?: { name: string; type: RoomType | null } } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("guardado");
   const [panelOpen, setPanelOpen] = usePref("orc.painel", true);
@@ -195,7 +206,9 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
 
   const finishRoom = (poly: Point[]) => {
     if (poly.length < 3) return setMessage("Uma divisão precisa de pelo menos 3 cantos.");
-    setRoomDialog({ polygon: poly });
+    // nome do arquiteto que está dentro da divisão (DXF ou PDF)
+    const label = labelForPolygon(poly, plan.labels ?? []);
+    setRoomDialog({ polygon: poly, suggestion: label ? { name: label.text, type: guessRoomType(label.text) } : undefined });
     setDraft([]);
   };
 
@@ -507,7 +520,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
             className={`tool ${tool === t.id ? "active" : ""}`}
             onClick={() => selectTool(t.id)}
             title={`${t.label} (${t.key})`}
-            disabled={(t.id === "porta" || t.id === "janela") && !scale}
+            disabled={((t.id === "porta" || t.id === "janela") && !scale) || (t.id === "calibrar" && isDxf)}
           >
             <span className="tool-key">{t.key}</span>
             {t.label}
@@ -719,6 +732,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
       </main>
 
       <aside className="panel">
+        {sourcePanel}
         <section>
           <h3>Piso</h3>
           <label>
@@ -736,7 +750,13 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
 
         <section>
           <h3>Escala</h3>
-          {scale && (!scaleCheck || scaleCheck.ok) ? (
+          {isDxf && scale ? (
+            <p className="compact-row">
+              <span>
+                Exata, do DXF <span className="muted">· unidades: {String((floor.sourceMeta as { unit?: string } | null)?.unit ?? "?")}</span>
+              </span>
+            </p>
+          ) : scale && (!scaleCheck || scaleCheck.ok) ? (
             <div className="compact-row">
               <span>
                 1:{Math.round(effectiveDenominator(scale))} <span className="muted">· cota {formatM(scale.refMeters)} m</span>
@@ -910,6 +930,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
 
       {roomDialog && (
         <RoomDialog
+          suggestion={roomDialog.suggestion}
           existingNames={state.rooms.map((r) => r.name)}
           onCancel={() => setRoomDialog(null)}
           onConfirm={(name, types) => {
@@ -1079,16 +1100,18 @@ function CalibrationDialog({
 }
 
 function RoomDialog({
+  suggestion,
   existingNames,
   onCancel,
   onConfirm,
 }: {
+  suggestion?: { name: string; type: RoomType | null };
   existingNames: string[];
   onCancel: () => void;
   onConfirm: (name: string, types: RoomType[]) => void;
 }) {
-  const [name, setName] = useState("");
-  const [types, setTypes] = useState<RoomType[]>([]);
+  const [name, setName] = useState(suggestion?.name ?? "");
+  const [types, setTypes] = useState<RoomType[]>(suggestion?.type ? [suggestion.type] : []);
   const duplicate = existingNames.some((n) => n.trim().toLowerCase() === name.trim().toLowerCase());
 
   return (
@@ -1103,6 +1126,7 @@ function RoomDialog({
           Nome
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: Quarto 1" />
         </label>
+        {suggestion && <p className="muted small">Nome lido da planta do arquiteto. Confirma o tipo (vários = open space).</p>}
         {duplicate && <p className="warn small">Já existe uma divisão com este nome.</p>}
         <TypePicker
           value={types}

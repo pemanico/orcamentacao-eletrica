@@ -1,4 +1,4 @@
-import type { FloorState, Issue, ProjectStatus, RuleRow, RuleState, RuleTableId } from "@orc/core";
+import type { DxfSourceMeta, FloorState, Issue, ProjectStatus, RuleRow, RuleState, RuleTableId } from "@orc/core";
 
 export interface Project {
   id: string;
@@ -45,6 +45,8 @@ export interface Floor {
   ceilingHeightM: number;
   pdfOriginalName: string;
   pdfPage: number;
+  sourceKind: "pdf" | "dxf";
+  sourceMeta: Partial<DxfSourceMeta> | null;
   state: FloorState;
   rev: number;
   approvedAt: string | null;
@@ -98,8 +100,9 @@ export const api = {
     call<Project>("/api/projects", json("POST", p)),
   getProject: (id: string) => call<ProjectDetail>(`/api/projects/${id}`),
   /** O PDF vai como corpo binário; os metadados na query string. */
-  createFloor: (projectId: string, file: File, meta: { name: string; ceilingHeightM: number; pdfPage: number }) => {
+  createFloor: (projectId: string, file: File, meta: { name: string; ceilingHeightM: number; pdfPage: number; kind?: "pdf" | "dxf" }) => {
     const q = new URLSearchParams({
+      kind: meta.kind ?? "pdf",
       name: meta.name,
       ceilingHeightM: String(meta.ceilingHeightM),
       pdfPage: String(meta.pdfPage),
@@ -107,13 +110,14 @@ export const api = {
     });
     return call<Floor>(`/api/projects/${projectId}/floors?${q}`, {
       method: "POST",
-      headers: { "Content-Type": "application/pdf" },
+      headers: { "Content-Type": meta.kind === "dxf" ? "application/octet-stream" : "application/pdf" },
       body: file,
     });
   },
   getFloor: (id: string) => call<Floor>(`/api/floors/${id}`),
   saveFloor: (id: string, data: { rev: number; state?: FloorState; name?: string; ceilingHeightM?: number }) =>
     call<Floor>(`/api/floors/${id}`, json("PUT", data)),
+  saveFloorSource: (id: string, meta: Partial<DxfSourceMeta>) => call<Floor>(`/api/floors/${id}/source`, json("PUT", meta)),
   approveFloor: (id: string) => call<Floor>(`/api/floors/${id}/approve`, { method: "POST" }),
   pdfUrl: (id: string) => `/api/floors/${id}/pdf`,
   info: () => call<DataInfo>("/api/info"),
