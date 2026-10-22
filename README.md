@@ -101,7 +101,9 @@ Output = `DXF`, versão `ACAD2018`) ou, no AutoCAD/BricsCAD, *Guardar como → D
    A medida da planta escolhida aparece ao lado, para conferires.
 4. **Editor**: escala exata (não há calibração). Painel **Layers do DXF**: *Ver* mostra no
    fundo, *Snap* define onde o cursor agarra (por defeito as layers de paredes, ex.
-   `arq_corte`). "Só paredes e nomes" limpa o fundo.
+   `arq_corte`, e os contornos das tramas). "Só paredes e nomes" limpa o fundo.
+   As layers terminadas em **[trama]** são o contorno das tramas (HATCH): há arquitetos
+   que desenham as divisórias finas só como trama, sem linhas de parede.
 5. **Divisões**: ao fechares uma divisão à volta de um nome do arquiteto (ex. "Quarto 2",
    "IS.1", "Sala de estar/jantar"), o nome e o tipo ficam preenchidos. Também funciona com
    PDFs que tenham o texto da planta.

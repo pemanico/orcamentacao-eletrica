@@ -51,6 +51,13 @@ export interface DxfDrawing {
 
 export class DxfError extends Error {}
 
+/**
+ * Sufixo das layers "virtuais" com o contorno das tramas (HATCH). No primeiro DXF real as
+ * divisórias finas só existiam como tramas, sem linhas de parede.
+ */
+export const HATCH_SUFFIX = " [trama]";
+export const isHatchLayer = (name: string) => name.endsWith(HATCH_SUFFIX);
+
 type Code = number;
 type Pair = [Code, string];
 
@@ -143,6 +150,71 @@ function bulgePoints(p: Point, q: Point, bulge: number): Point[] {
     const t = a0 + (theta * (i + 1)) / n;
     return { x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) };
   });
+}
+
+/**
+ * Contornos de um HATCH: caminhos em polilinha (com bulge) ou em arestas (linhas e arcos).
+ * Splines e elipses nas arestas são ignoradas.
+ */
+export function hatchBoundaries(p: Pair[]): Point[][] {
+  const out: Point[][] = [];
+  let i = p.findIndex(([c]) => c === 91);
+  if (i < 0) return out;
+  const nPaths = Number(p[i]![1]);
+  i++;
+  const at = (k: number) => Number(p[k]?.[1]);
+  for (let path = 0; path < nPaths && i < p.length; path++) {
+    while (i < p.length && p[i]![0] !== 92) i++;
+    if (i >= p.length) break;
+    const flag = at(i++);
+    if (flag & 2) {
+      const hasBulge = at(i++) !== 0; // 72
+      const closed = at(i++) !== 0; // 73
+      const n = at(i++); // 93
+      const verts: { x: number; y: number; bulge: number }[] = [];
+      for (let v = 0; v < n && i + 1 < p.length; v++) {
+        const x = at(i++);
+        const y = at(i++);
+        let bulge = 0;
+        if (hasBulge && p[i]?.[0] === 42) bulge = at(i++);
+        verts.push({ x, y, bulge });
+      }
+      const pts: Point[] = verts.length ? [{ x: verts[0]!.x, y: verts[0]!.y }] : [];
+      const segs = closed ? verts.length : verts.length - 1;
+      for (let q = 0; q < segs; q++) {
+        const a = verts[q]!;
+        const b = verts[(q + 1) % verts.length]!;
+        pts.push(...bulgePoints(a, b, a.bulge));
+      }
+      if (pts.length > 1) out.push(pts);
+    } else {
+      const nEdges = at(i++); // 93
+      for (let e = 0; e < nEdges && i < p.length; e++) {
+        const type = at(i++); // 72
+        if (type === 1) {
+          out.push([
+            { x: at(i), y: at(i + 1) },
+            { x: at(i + 2), y: at(i + 3) },
+          ]);
+          i += 4;
+        } else if (type === 2) {
+          const [cx, cy, r, a0, a1, ccw] = [at(i), at(i + 1), at(i + 2), at(i + 3), at(i + 4), at(i + 5)];
+          i += 6;
+          // arestas em sentido horário guardam os ângulos espelhados (como no ezdxf)
+          out.push(ccw ? arcPoints(cx, cy, r, a0, a1) : arcPoints(cx, cy, r, 360 - a1, 360 - a0));
+        } else {
+          // elipse (3) ou spline (4): salta até à próxima aresta ou ao fim do caminho
+          while (i < p.length && p[i]![0] !== 72 && p[i]![0] !== 97 && p[i]![0] !== 92) i++;
+        }
+      }
+    }
+    // objetos de origem associados (97 + handles 330)
+    if (p[i]?.[0] === 97) {
+      const k = at(i++);
+      i += k;
+    }
+  }
+  return out;
 }
 
 export function parseDxf(text: string, opts: { maxSegments?: number } = {}): DxfDrawing {
@@ -318,6 +390,10 @@ export function parseDxf(text: string, opts: { maxSegments?: number } = {}): Dxf
           }
           break;
         }
+        case "HATCH": {
+          for (const path of hatchBoundaries(p)) emitPath(layer + HATCH_SUFFIX, m, path);
+          break;
+        }
         case "VERTEX":
         case "SEQEND":
         case "ATTDEF":
@@ -456,8 +532,9 @@ export function segmentTouchesRegion(s: Segment, r: Region): boolean {
 const SNAP_LAYER = /corte|parede|wall|alvenaria|a-wall/i;
 const HIDDEN_LAYER = /trama|hatch|vegeta|arvore|árvore|grelha|norte|top_|cv_|cadastro|viewport|defpoints|folha|rotulo|rótulo/i;
 
-export const defaultSnapLayer = (name: string) => SNAP_LAYER.test(name);
-export const defaultVisibleLayer = (name: string) => !HIDDEN_LAYER.test(name);
+/** Snap por defeito: layers de paredes e contornos de tramas (que no ficheiro real incluem as divisórias). */
+export const defaultSnapLayer = (name: string) => SNAP_LAYER.test(name) || isHatchLayer(name);
+export const defaultVisibleLayer = (name: string) => isHatchLayer(name) || !HIDDEN_LAYER.test(name);
 
 export interface DxfSourceMeta {
   region: Region;

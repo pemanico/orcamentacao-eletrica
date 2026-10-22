@@ -103,12 +103,15 @@ describe("DXF", () => {
     await p.locator(".layer-panel").waitFor();
   });
 
-  it("escala exata do DXF, calibrar desativado, snap só nas paredes", async () => {
+  it("escala exata do DXF, calibrar desativado, snap nas paredes e nas tramas", async () => {
     await p.locator(".panel").getByText("Exata, do DXF").waitFor();
     assert.equal(await p.getByRole("button", { name: /Calibrar/ }).isDisabled(), true);
     assert.equal(await p.getByLabel("Snap arq_corte").isChecked(), true);
     assert.equal(await p.getByLabel("Snap arq_vista 1").isChecked(), false);
-    assert.equal(await p.getByLabel("Ver arq_tramas").count(), 0, "a trama não tem linhas: nem aparece");
+    assert.equal(await p.getByLabel("Ver arq_tramas", { exact: true }).count(), 0, "trama sem contorno não tem linhas: nem aparece");
+    // divisórias que só existem como trama: contorno visível e com snap
+    assert.equal(await p.getByLabel("Ver arq_tramas_claras [trama]", { exact: true }).isChecked(), true);
+    assert.equal(await p.getByLabel("Snap arq_tramas_claras [trama]", { exact: true }).isChecked(), true);
   });
 
   it("traça a fachada com snap aos cantos das paredes do DXF: 14,00 m", async () => {

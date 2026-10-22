@@ -69,8 +69,20 @@ def plan(ox, version):
     # mobiliário como bloco inserido (rodado 90° e escalado 2×)
     pair(0, "INSERT"); pair(8, "arq_mobiliario"); pair(2, "MESA")
     pair(10, ox + 3); pair(20, 3); pair(41, 2); pair(42, 2); pair(50, 90)
-    # trama (ignorada)
+    # trama sem contorno (só padrão): não gera linhas
     pair(0, "HATCH"); pair(8, "arq_tramas"); pair(2, "SOLID")
+    # divisória que SÓ existe como trama (como no ficheiro real): contorno em polilinha
+    pair(0, "HATCH"); pair(8, "arq_tramas_claras"); pair(2, "SOLID"); pair(70, 1); pair(71, 0)
+    pair(91, 1); pair(92, 2); pair(72, 0); pair(73, 1); pair(93, 4)
+    for x, y in [(ox + 10.5, 0.2), (ox + 10.6, 0.2), (ox + 10.6, 4.5), (ox + 10.5, 4.5)]:
+        pair(10, x); pair(20, y)
+    pair(97, 0); pair(75, 0); pair(76, 1); pair(98, 1); pair(10, ox + 10.55); pair(20, 2)
+    # outra divisória como trama com contorno em arestas (linhas)
+    pair(0, "HATCH"); pair(8, "arq_estereotomia"); pair(2, "ANSI31"); pair(70, 0); pair(71, 0)
+    pair(91, 1); pair(92, 1); pair(93, 4)
+    for (a, b, c, d) in [(ox + 3.5, 4.5, ox + 7, 4.5), (ox + 7, 4.5, ox + 7, 4.6), (ox + 7, 4.6, ox + 3.5, 4.6), (ox + 3.5, 4.6, ox + 3.5, 4.5)]:
+        pair(72, 1); pair(10, a); pair(20, b); pair(11, c); pair(21, d)
+    pair(97, 0)
 
 section("HEADER")
 pair(9, "$ACADVER"); pair(1, "AC1032")

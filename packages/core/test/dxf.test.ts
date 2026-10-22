@@ -30,7 +30,7 @@ describe("leitor de DXF", () => {
     const names = d.layers.map((l) => l.name);
     assert.ok(names.includes("arq_corte"));
     assert.ok(!names.includes("FA FOLHA"), "linha do espaço de papel não pode entrar");
-    assert.equal(d.skipped.HATCH, 2);
+    assert.equal(d.skipped.HATCH ?? 0, 0, "as tramas já não são ignoradas");
   });
 
   it("paredes fechadas (LWPOLYLINE) dão 4 segmentos cada", () => {
@@ -65,6 +65,23 @@ describe("leitor de DXF", () => {
 
   it("rejeita o que não é DXF em texto", () => {
     assert.throws(() => parseDxf("AC1032 binário"), DxfError);
+  });
+});
+
+describe("tramas", () => {
+  it("o contorno das tramas vira linhas numa layer própria (divisórias que só existem como trama)", () => {
+    const poly = d.layers.find((l) => l.name === "arq_tramas_claras [trama]");
+    const edges = d.layers.find((l) => l.name === "arq_estereotomia [trama]");
+    assert.equal(poly?.segments, 8, "4 lados × 2 plantas (contorno em polilinha)");
+    assert.equal(edges?.segments, 8, "4 arestas × 2 plantas (contorno em arestas)");
+    const seg = d.segments.find((s) => s.layer === "arq_tramas_claras [trama]" && s.a.x < 20 && s.a.x === s.b.x && s.a.x === 10.6);
+    assert.ok(seg, "a face da divisória em x = 10,6 m tem de existir");
+    assert.equal(d.layers.some((l) => l.name === "arq_tramas [trama]"), false, "trama sem contorno não gera nada");
+  });
+
+  it("contornos de tramas são visíveis e com snap por defeito", () => {
+    assert.equal(defaultVisibleLayer("arq_tramas_claras [trama]"), true);
+    assert.equal(defaultSnapLayer("arq_estereotomia [trama]"), true);
   });
 });
 
