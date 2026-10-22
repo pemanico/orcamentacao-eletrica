@@ -162,4 +162,25 @@ describe("F1 — planta", () => {
     await page.getByText("Comprimento: 4,24 m").waitFor();
     if (shots) await page.screenshot({ path: join(shots, "diagonal.png") });
   });
+
+  it("painel e ajuda recolhem para libertar a planta, e a escolha fica guardada", async () => {
+    const before = (await page.locator("svg.canvas").boundingBox())!.width;
+    await page.keyboard.press("Tab");
+    await page.locator(".panel").waitFor({ state: "hidden" });
+    await page.locator(".tool-hint .hint-close").click();
+    await page.locator(".tool-hint").waitFor({ state: "detached" });
+    const after = (await page.locator("svg.canvas").boundingBox())!.width;
+    assert.ok(after > before + 250, `a planta devia ganhar largura: ${before} → ${after}`);
+    if (shots) await page.screenshot({ path: join(shots, "painel-recolhido.png") });
+
+    await page.reload();
+    await page.locator("svg.canvas image").waitFor();
+    assert.equal(await page.locator(".panel").isVisible(), false, "painel devia continuar recolhido");
+    assert.equal(await page.locator(".tool-hint").count(), 0, "ajuda devia continuar escondida");
+
+    await page.getByRole("button", { name: "Mostrar painel" }).click();
+    await page.locator(".panel").waitFor();
+    await page.getByRole("button", { name: "? Ajuda" }).click();
+    await page.locator(".tool-hint").waitFor();
+  });
 });

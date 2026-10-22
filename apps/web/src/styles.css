@@ -518,3 +518,59 @@ label.check {
   font-size: 1.05rem;
   margin-bottom: 0.8rem;
 }
+
+/* painel recolhível e ajuda dispensável */
+.editor.panel-closed {
+  grid-template-columns: 112px 1fr 0;
+}
+.editor.panel-closed .panel {
+  display: none;
+}
+.panel-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 4;
+  width: 22px;
+  height: 56px;
+  padding: 0;
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ink-2);
+  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.08);
+}
+.tool-hint {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  right: auto;
+  max-width: min(760px, calc(100% - 60px));
+}
+.hint-close {
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  color: #c9d1dc;
+  padding: 0 0.2rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.tool.active-soft {
+  background: var(--dark-2);
+  color: #fff;
+}
+.compact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+.small-btn {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}

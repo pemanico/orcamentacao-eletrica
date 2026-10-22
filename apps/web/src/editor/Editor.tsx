@@ -89,6 +89,8 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
   const [roomDialog, setRoomDialog] = useState<{ polygon: Point[]; editId?: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("guardado");
+  const [panelOpen, setPanelOpen] = usePref("orc.painel", true);
+  const [hintOpen, setHintOpen] = usePref("orc.ajuda", true);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -398,6 +400,10 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
       if (sel && k === "f") return updateOpening(sel.id, { swing: sel.swing === "esquerda" ? "direita" : "esquerda" });
       if (sel && k === "h") return updateOpening(sel.id, { hinge: sel.hinge === "inicio" ? "fim" : "inicio" });
       if (k === "o") return setOrtho((o) => !o);
+      if (e.key === "\\" || e.key === "Tab") {
+        e.preventDefault();
+        return setPanelOpen(!panelOpen);
+      }
       if (k === "0") return fit();
       const t = TOOLS.find((x) => x.key.toLowerCase() === k);
       if (t) selectTool(t.id);
@@ -493,7 +499,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
   const cursorStyle = dragRef.current?.kind === "pan" || mods.space ? "grabbing" : tool === "selecionar" ? "default" : "crosshair";
 
   return (
-    <div className="editor">
+    <div className={`editor ${panelOpen ? "" : "panel-closed"}`}>
       <aside className="toolbar" aria-label="Ferramentas">
         <a href={`#/projeto/${floor.projectId}`} className="tool back" title="Voltar ao projeto">
           ←
@@ -517,6 +523,9 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
         <button className="tool" onClick={fit} title="Ajustar ao ecrã (0)">
           <span className="tool-key">0</span>Ajustar
         </button>
+        <button className={`tool ${hintOpen ? "active-soft" : ""}`} onClick={() => setHintOpen(!hintOpen)} title="Mostrar/esconder ajuda">
+          <span className="tool-key">?</span>Ajuda
+        </button>
         <button className="tool" onClick={undo} disabled={!canUndo} title="Anular (Ctrl+Z)">
           ↶ Anular
         </button>
@@ -526,9 +535,24 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
       </aside>
 
       <main className="canvas-wrap" ref={wrapRef}>
-        <div className="tool-hint">
-          <strong>{toolInfo.label}:</strong> {toolInfo.help}
-        </div>
+        {hintOpen && (
+          <div className="tool-hint">
+            <span>
+              <strong>{toolInfo.label}:</strong> {toolInfo.help}
+            </span>
+            <button className="hint-close" onClick={() => setHintOpen(false)} title="Esconder ajuda (volta no botão ? Ajuda)" aria-label="Esconder ajuda">
+              ×
+            </button>
+          </div>
+        )}
+        <button
+          className="panel-toggle"
+          onClick={() => setPanelOpen(!panelOpen)}
+          title={panelOpen ? "Esconder painel (Tab)" : "Mostrar painel (Tab)"}
+          aria-label={panelOpen ? "Esconder painel" : "Mostrar painel"}
+        >
+          {panelOpen ? "›" : "‹"}
+        </button>
         {message && (
           <div className="toast" role="alert" onClick={() => setMessage(null)}>
             {message}
@@ -626,7 +650,7 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
             })()}
 
             {/* calibração */}
-            {scale && (
+            {scale && tool === "calibrar" && (
               <g className="calib">
                 <line x1={scale.refA.x} y1={scale.refA.y} x2={scale.refB.x} y2={scale.refB.y} strokeWidth={sw(1.5)} strokeDasharray={`${sw(6)} ${sw(4)}`} />
                 <text x={(scale.refA.x + scale.refB.x) / 2} y={(scale.refA.y + scale.refB.y) / 2 - fs * 0.6} fontSize={fs} textAnchor="middle">
@@ -715,29 +739,32 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
 
         <section>
           <h3>Escala</h3>
-          {scale ? (
+          {scale && (!scaleCheck || scaleCheck.ok) ? (
+            <div className="compact-row">
+              <span>
+                1:{Math.round(effectiveDenominator(scale))} <span className="muted">· cota {formatM(scale.refMeters)} m</span>
+                {scaleCheck && <span className="ok"> · Confere com o carimbo 1:{scaleCheck.stampDenominator}.</span>}
+              </span>
+              <button className="small-btn" onClick={() => selectTool("calibrar")}>
+                Recalibrar
+              </button>
+            </div>
+          ) : scale && scaleCheck ? (
             <>
-              <p>
-                Calibrada: 1:{Math.round(effectiveDenominator(scale))} efetiva
-                <span className="muted"> (cota de {formatM(scale.refMeters)} m)</span>
+              <p className="warn">
+                O carimbo diz 1:{scaleCheck.stampDenominator}, mas a calibração dá 1:{Math.round(scaleCheck.effectiveDenominator)} (
+                {Math.round(scaleCheck.relativeDiff * 100)}% de diferença). O PDF foi provavelmente impresso com "ajustar à página".
+                Vale a calibração; confirma com uma segunda cota.
               </p>
-              {scaleCheck &&
-                (scaleCheck.ok ? (
-                  <p className="ok">Confere com o carimbo 1:{scaleCheck.stampDenominator}.</p>
-                ) : (
-                  <p className="warn">
-                    O carimbo diz 1:{scaleCheck.stampDenominator}, mas a calibração dá 1:{Math.round(scaleCheck.effectiveDenominator)} (
-                    {Math.round(scaleCheck.relativeDiff * 100)}% de diferença). O PDF foi provavelmente impresso com "ajustar à página".
-                    Vale a calibração; confirma com uma segunda cota.
-                  </p>
-                ))}
               <button onClick={() => selectTool("calibrar")}>Recalibrar</button>
             </>
           ) : (
-            <p className="warn">Por calibrar. Usa a ferramenta Calibrar numa cota longa.</p>
-          )}
-          {plan.stampDenominators.length > 0 && (
-            <p className="muted">Carimbo do PDF: {plan.stampDenominators.map((d) => `1:${d}`).join(", ")}</p>
+            <>
+              <p className="warn">Por calibrar. Usa a ferramenta Calibrar numa cota longa.</p>
+              {plan.stampDenominators.length > 0 && (
+                <p className="muted">Carimbo do PDF: {plan.stampDenominators.map((d) => `1:${d}`).join(", ")}</p>
+              )}
+            </>
           )}
         </section>
 
@@ -900,6 +927,27 @@ export function Editor({ floor, plan }: { floor: Floor; plan: LoadedPlan }) {
 }
 
 // ---------------------------------------------------------------- componentes auxiliares
+
+/** Preferência de interface guardada no browser (painel aberto, ajuda visível). */
+function usePref(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const [v, setV] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? initial : raw === "1";
+    } catch {
+      return initial;
+    }
+  });
+  const set = (next: boolean) => {
+    setV(next);
+    try {
+      localStorage.setItem(key, next ? "1" : "0");
+    } catch {
+      /* sem armazenamento: fica só nesta sessão */
+    }
+  };
+  return [v, set];
+}
 
 /** Campo numérico que aceita vírgula decimal e só grava ao sair/Enter. */
 function NumberField({ label, value, min, max, onCommit }: { label: string; value: number; min: number; max: number; onCommit: (v: number) => void }) {
