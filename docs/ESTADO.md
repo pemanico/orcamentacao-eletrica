@@ -1,0 +1,101 @@
+# Estado do projeto — passagem entre chats
+
+Última atualização: 2026-10-23 · commit `d8d9050` · repo https://github.com/pemanico/orcamentacao-eletrica
+
+Lê isto primeiro num chat novo. O plano de design aprovado está em
+https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
+
+## Como trabalhar com o Ordep
+
+- Português de Portugal. Direto, sem validações vazias: questiona, aponta falhas e pontos cegos.
+- Ele valida tudo: o motor/agente propõe, ele aprova. **O LLM nunca calcula**; só regras
+  aprovadas entram em cálculos; qualquer alteração retira a aprovação.
+- Uso pessoal, corre no PC dele (Windows, Node ≥ 22.13). Ele é engenheiro informático.
+- Não escrever código novo de uma fase sem ele pedir/aprovar.
+- Privacidade: o DXF/PDF da casa dele **nunca** vão para o repo (público). Valores
+  comerciais (horas, preço da hora, margens) ficam só na base de dados local (`data/`).
+
+## Decisões de produto (resumo)
+
+Instalação residencial **monofásica**, normas portuguesas (RTIEBT). Input: PDF vetorial do
+arquiteto (sempre com escala/cotas) ou DXF (casas novas; DWG converte-se com ODA File
+Converter). Renovações: só PDF ou levantamento à mão ("sem planta" fica para depois).
+Domótica fica para depois. Potência contratada é decisão dele (app calcula e avisa);
+diferenciais automáticos. Cablagem v1 = estimativa média de metros para custo. Materiais
+manuais (scraping depois). Mão de obra por horas (valores ainda desconhecidos). Markup 25 %
+sobre o custo. 3 orçamentos = 3 gamas de material. Orçamento detalhado, web + PDF.
+Quadro: unifilar + disposição física.
+
+Circuitos que ele deu: C1 tomadas sala; C2–C4 tomadas quartos; C5 tomadas WC; C6 forno;
+placa; exaustor/frigorífico/isoladas cozinha; C8 lavandaria; C9 ilum. quartos; C10 ilum. WC;
+C11 ilum. cozinha+sala+garagem; bomba de calor; AC (a numeração dele tinha repetidos — por
+confirmar).
+
+## Feito
+
+- **F1 planta (PDF)**: importar, calibrar (compara com o carimbo), paredes com snap (canto e
+  linhas diagonais ganham ao orto), portas/janelas, divisões (open space = vários tipos),
+  validação, aprovar. Testado com PDF real: 20 min, áreas certas.
+- **DXF**: parser próprio (LINE, LWPOLYLINE c/ bulge, POLYLINE, ARC, CIRCLE, TEXT/MTEXT,
+  DIMENSION, INSERT, HATCH → layers `"<layer> [trama]"`). Unidades deduzidas das cotas
+  (o cabeçalho do DXF real dizia cm, desenho em m). Deteção das plantas de piso pelos nomes
+  das divisões (cartões com miniatura; implantação dá aviso). Painel de layers Ver/Snap.
+  Escala exata. Nome e tipo da divisão preenchidos a partir do texto do arquiteto.
+  Testado com o DXF da casa dele: "impecável, ficou perfeito".
+- **Vários pisos**: adicionar piso a partir de ficheiro já importado; apagar piso.
+- **Regras (F0)** em menu próprio, editáveis na app: tipos de divisão, defaults por divisão,
+  tipos de circuito, equipamentos, mão de obra, parâmetros. Estados A definir → Proposta →
+  Aprovada; técnicas exigem fonte; exportar CSV para o formador.
+- **Tipos de divisão**: base + sala das máquinas/área técnica + closet; "+ Novo tipo" no
+  diálogo; código imutável enquanto usado; aviso de tipos sem defaults.
+- **Projetos**: workflow Levantamento → Orçamento → Enviado → Adjudicado → Em obra →
+  Concluído (+ Perdido), arquivar, apagar com confirmação (bloqueado a partir de Adjudicado),
+  histórico.
+- **Dados**: SQLite em `data/orcamentacao.db`, autosave, cópias de segurança, página Dados.
+
+## Pendente (por ordem)
+
+1. **Ele**: aprovar a tabela "Defaults por divisão" (linhas "A definir": cozinha luz,
+   máquina loiça, lavandaria, corredor quantidade, exteriores, sala tomadas/interruptores;
+   corredor > 2 portas: inversor ou telerruptor?). Bloqueia a F2.
+2. **Ele (formador)**: horas de mão de obra, preço da hora, valores RTIEBT (secções,
+   disjuntores, diferenciais, potências), secção 702 (piscina).
+3. **Ele**: cronometrar o piso 0 traçado a partir do DXF. Se > 10 min → gerar paredes
+   automaticamente a partir de `arq_corte` + contornos das tramas (proposto, adiado).
+4. Sugerido: tipo próprio "Casa das máquinas da piscina" com defaults próprios (bomba de
+   filtração, quadro parcial, equipotencial, 30 mA).
+5. **F2**: colocação de pontos a partir das regras aprovadas (+ etiquetas QE/MLL/MLR/MO/PF do
+   DXF). Na F3 perguntar por onde passam os tubos (laje, teto falso, desvão) — muda os metros.
+6. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
+
+## A casa dele (caso de teste)
+
+Vivenda térrea (só piso 0; o DXF fala de "piso -1 retirado"). Usar a **Planta 3**
+(alterações) do DXF. Tem piscina com casa das máquinas, área técnica, closet, garagem,
+3 quartos, escritório, 4–5 IS, alpendres. O DXF real (`2022-015-CASA-AP-LIC-R3.dxf`) não
+está no repo; pede-o a ele se precisares.
+
+## Arquitetura técnica
+
+Monorepo npm workspaces, TypeScript, `"type": "module"`.
+
+```
+packages/core   lógica pura (geometria, escala, snap, pdfSegments, dxf, roomNames,
+                roomTypes, rules, projects, validate, schema zod). Testes node:test + tsx.
+apps/server     node:http + Router mínimo, node:sqlite (DatabaseSync). 127.0.0.1:5174.
+                db.ts (projects, floors, project_events; migrações via PRAGMA table_info),
+                rules.ts (tabela rules, seed de regras/*.csv só em tabela vazia), app.ts.
+apps/web        React 19 + pdf.js 6 (build legacy) + editor SVG; esbuild (scripts/build-web.mjs).
+                Router por hash: #/ #/arquivados #/projeto/:id #/piso/:id #/regras/:t #/dados
+e2e             Playwright (Chromium) — editor.test.ts, dxf.test.ts
+regras/         CSV iniciais (sem valores comerciais)
+```
+
+- Coordenadas em **unidades de página PDF** (pontos, y para baixo); metros via
+  `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
+- Concorrência otimista: `rev` + 409. Autosave ~700 ms.
+- Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
+  `npm run test:e2e`. Estado dos testes em d8d9050: core 40, servidor 34, e2e 25 — tudo verde.
+- No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
+  `/opt/npm-tools/node_modules`; `typecheck:web` não corre lá (faltam @types). No PC dele
+  é `npm install` normal.
