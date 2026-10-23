@@ -28,6 +28,7 @@ export function EditorPage({ floorId }: { floorId: string }) {
   const [choosing, setChoosing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>("…");
+  const [siblings, setSiblings] = useState<{ name: string; region: Region }[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +38,16 @@ export function EditorPage({ floorId }: { floorId: string }) {
         const f = await api.getFloor(floorId);
         if (cancelled) return;
         setFloor(f);
-        api.getProject(f.projectId).then((p) => !cancelled && setProjectName(p.name), () => {});
+        api.getProject(f.projectId).then((p) => {
+          if (cancelled) return;
+          setProjectName(p.name);
+          // outros pisos do mesmo ficheiro e a planta que cada um usa
+          setSiblings(
+            p.floors
+              .filter((x) => x.id !== f.id && x.sourceFile === f.sourceFile && x.sourceMeta?.region)
+              .map((x) => ({ name: x.name, region: x.sourceMeta!.region! })),
+          );
+        }, () => {});
         if (f.sourceKind === "dxf") {
           const text = await (await fetch(api.pdfUrl(floorId))).text();
           if (!cancelled) setDrawing(parseDxf(text));
@@ -112,6 +122,7 @@ export function EditorPage({ floorId }: { floorId: string }) {
         <DxfSetup
           drawing={drawing}
           initial={meta ? { region: meta.region, unit: meta.unit } : null}
+          used={siblings}
           onConfirm={confirmRegion}
           onCancel={meta ? () => setChoosing(false) : undefined}
         />

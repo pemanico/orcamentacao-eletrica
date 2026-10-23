@@ -1105,3 +1105,16 @@ button.danger.solid {
 .dxf-setup .panel {
   overflow-y: auto;
 }
+.cand-used {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ok);
+}
+.kind-tag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  color: var(--ink-2);
+}

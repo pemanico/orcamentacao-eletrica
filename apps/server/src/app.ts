@@ -72,6 +72,8 @@ const floorDto = (r: FloorRow) => {
     ceilingHeightM: r.ceiling_height_m,
     pdfOriginalName: r.pdf_original_name,
     pdfPage: r.pdf_page,
+    /** identificador do ficheiro de origem (vários pisos podem partilhar o mesmo) */
+    sourceFile: r.pdf_file,
     sourceKind: r.source_kind as "pdf" | "dxf",
     sourceMeta: r.source_meta ? (JSON.parse(r.source_meta) as Record<string, unknown>) : null,
     state,
@@ -274,6 +276,13 @@ export function buildApp(opts: {
       return {
         ...projectDto(row),
         events,
+        /** ficheiros já importados, para criar mais pisos a partir deles */
+        sources: [...new Map(floors.map((f) => [f.pdf_file, f])).values()].map((f) => ({
+          file: f.pdf_file,
+          originalName: f.pdf_original_name,
+          kind: f.source_kind,
+          floors: floors.filter((x) => x.pdf_file === f.pdf_file).map((x) => x.name),
+        })),
         floors: floors.map((f) => {
           const { state, issues, ...rest } = floorDto(f);
           return {
@@ -396,6 +405,61 @@ export function buildApp(opts: {
       if (Number(result.changes) !== 1) throw new HttpError(409, "Conflito de gravação. Recarrega a página.");
       touchProject(row.project_id);
       return floorDto(getFloor(row.id)!);
+    })
+    /**
+     * Novo piso a partir do ficheiro de outro piso do mesmo projeto (um DXF tem vários pisos;
+     * um PDF pode ter várias páginas). O ficheiro não é copiado: os pisos partilham-no.
+     */
+    .on("POST", "/api/floors/:id/copy", async ({ req, res, params }) => {
+      const row = getFloor(params.id!);
+      if (!row) throw new HttpError(404, "Piso não encontrado.");
+      const input = z
+        .object({
+          name: z.string().trim().min(1, "Nome do piso obrigatório").max(60),
+          ceilingHeightM: z.coerce.number().min(2, "Pé-direito mínimo 2 m").max(6, "Pé-direito máximo 6 m"),
+          pdfPage: z.coerce.number().int().min(1).optional(),
+        })
+        .parse(await readJson(req));
+      const id = newId();
+      db.prepare(
+        `INSERT INTO floors (id, project_id, name, ceiling_height_m, pdf_file, pdf_original_name, pdf_page, state_json, source_kind)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        row.project_id,
+        input.name,
+        input.ceilingHeightM,
+        row.pdf_file,
+        row.pdf_original_name,
+        input.pdfPage ?? row.pdf_page,
+        JSON.stringify(emptyFloorState()),
+        row.source_kind,
+      );
+      touchProject(row.project_id);
+      res.statusCode = 201;
+      return floorDto(getFloor(id)!);
+    })
+    /**
+     * Apagar um piso. O ficheiro só é apagado se nenhum outro piso o usar.
+     * Bloqueado em projetos adjudicados, em obra ou concluídos (histórico de obra).
+     */
+    .on("DELETE", "/api/floors/:id", async ({ req, params }) => {
+      const row = getFloor(params.id!);
+      if (!row) throw new HttpError(404, "Piso não encontrado.");
+      z.object({ confirm: z.literal(true) }).parse(await readJson(req));
+      const project = getProject(row.project_id)!;
+      if (!canDeleteProject(project.status as ProjectStatus)) {
+        throw new HttpError(
+          409,
+          `O projeto está "${PROJECT_STATUS_LABEL[project.status as ProjectStatus]}": os pisos fazem parte do histórico da obra e não podem ser apagados.`,
+        );
+      }
+      db.prepare("DELETE FROM floors WHERE id = ?").run(row.id);
+      const { n } = db.prepare("SELECT COUNT(*) AS n FROM floors WHERE pdf_file = ?").get(row.pdf_file) as { n: number };
+      if (n === 0) rmSync(join(pdfDir, row.pdf_file), { force: true });
+      logEvent(row.project_id, "piso_apagado", project.status, project.status, row.name);
+      touchProject(row.project_id);
+      return { ok: true, fileRemoved: n === 0 };
     })
     .on("POST", "/api/floors/:id/approve", ({ params }) => {
       const row = getFloor(params.id!);

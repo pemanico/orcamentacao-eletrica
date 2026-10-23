@@ -26,6 +26,9 @@ export function ProjectPage({ projectId }: { projectId: string }) {
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deletingFloor, setDeletingFloor] = useState<{ id: string; name: string } | null>(null);
+  const [copy, setCopy] = useState({ file: "", name: "", ceilingHeightM: "2,60", pdfPage: "" });
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const reload = () => api.getProject(projectId).then(setProject, (e: Error) => setError(e.message));
   useEffect(() => {
@@ -159,11 +162,12 @@ export function ProjectPage({ projectId }: { projectId: string }) {
               <tr>
                 <th>Piso</th>
                 <th>Pé-direito</th>
-                <th>PDF</th>
+                <th>Fonte</th>
                 <th>Escala</th>
                 <th>Paredes</th>
                 <th>Divisões</th>
                 <th>Estado</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -171,7 +175,10 @@ export function ProjectPage({ projectId }: { projectId: string }) {
                 <tr key={f.id} className="clickable" onClick={() => go(`/piso/${f.id}`)}>
                   <td>{f.name}</td>
                   <td>{f.ceilingHeightM.toLocaleString("pt-PT")} m</td>
-                  <td className="muted">{f.pdfOriginalName}</td>
+                  <td className="muted">
+                    <span className="kind-tag">{f.sourceKind.toUpperCase()}</span> {f.pdfOriginalName}
+                    {f.sourceKind === "pdf" && f.pdfPage > 1 ? ` · pág. ${f.pdfPage}` : ""}
+                  </td>
                   <td>{f.calibrated ? "✔" : "—"}</td>
                   <td>{f.wallCount}</td>
                   <td>{f.roomCount}</td>
@@ -182,6 +189,21 @@ export function ProjectPage({ projectId }: { projectId: string }) {
                       <span className="badge">{f.errorCount} por resolver</span>
                     ) : (
                       <span className="badge warn">Por aprovar</span>
+                    )}
+                  </td>
+                  <td>
+                    {canDeleteProject(project.status) && (
+                      <button
+                        className="icon-btn"
+                        title="Apagar piso"
+                        aria-label={`Apagar piso ${f.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingFloor({ id: f.id, name: f.name });
+                        }}
+                      >
+                        ×
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -229,6 +251,64 @@ export function ProjectPage({ projectId }: { projectId: string }) {
         {error && <p className="error">{error}</p>}
       </section>
 
+      {project.sources.length > 0 && (
+        <section className="card">
+          <h2>Adicionar piso de um ficheiro já importado</h2>
+          <p className="muted small">
+            Um DXF traz normalmente vários pisos (piso 0, piso -1, cobertura); um PDF pode ter um piso por página. O ficheiro não é importado
+            outra vez.
+          </p>
+          <form
+            className="form-row"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setCopyError(null);
+              const src = project.sources.find((x) => x.file === (copy.file || project.sources[0]!.file))!;
+              const from = project.floors.find((f) => f.sourceFile === src.file)!;
+              try {
+                const nf = await api.copyFloor(from.id, {
+                  name: copy.name,
+                  ceilingHeightM: Number(copy.ceilingHeightM.replace(",", ".")),
+                  pdfPage: src.kind === "pdf" && copy.pdfPage ? Number(copy.pdfPage) : undefined,
+                });
+                go(`/piso/${nf.id}`);
+              } catch (err) {
+                setCopyError((err as Error).message);
+              }
+            }}
+          >
+            <label className="grow">
+              Ficheiro
+              <select aria-label="Ficheiro de origem" value={copy.file || project.sources[0]!.file} onChange={(e) => setCopy({ ...copy, file: e.target.value })}>
+                {project.sources.map((src) => (
+                  <option key={src.file} value={src.file}>
+                    {src.kind.toUpperCase()} · {src.originalName} (usado em: {src.floors.join(", ")})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Nome do novo piso
+              <input required value={copy.name} onChange={(e) => setCopy({ ...copy, name: e.target.value })} placeholder="ex.: Piso -1" />
+            </label>
+            <label className="narrow">
+              Pé-direito (m)
+              <input required inputMode="decimal" value={copy.ceilingHeightM} onChange={(e) => setCopy({ ...copy, ceilingHeightM: e.target.value })} />
+            </label>
+            {project.sources.find((x) => x.file === (copy.file || project.sources[0]!.file))?.kind === "pdf" && (
+              <label className="narrow">
+                Página
+                <input inputMode="numeric" value={copy.pdfPage} onChange={(e) => setCopy({ ...copy, pdfPage: e.target.value })} placeholder="2" />
+              </label>
+            )}
+            <button className="primary" disabled={!copy.name.trim()}>
+              Adicionar piso
+            </button>
+          </form>
+          {copyError && <p className="error">{copyError}</p>}
+        </section>
+      )}
+
       <section className="card">
         <h2>Histórico</h2>
         <ol className="history">
@@ -260,6 +340,30 @@ export function ProjectPage({ projectId }: { projectId: string }) {
           </p>
         )}
       </section>
+      {deletingFloor && (
+        <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && setDeletingFloor(null)}>
+          <div className="modal" role="dialog" aria-label="Apagar piso">
+            <h3>Apagar o piso "{deletingFloor.name}"?</h3>
+            <p>Apaga as paredes, portas e divisões traçadas neste piso. Não pode ser desfeito.</p>
+            <p className="muted small">O ficheiro da planta só é apagado se nenhum outro piso o usar.</p>
+            {actionError && <p className="error">{actionError}</p>}
+            <div className="row end">
+              <button onClick={() => setDeletingFloor(null)}>Cancelar</button>
+              <button
+                className="danger solid"
+                onClick={() =>
+                  act(async () => {
+                    await api.deleteFloor(deletingFloor.id);
+                    setDeletingFloor(null);
+                  })
+                }
+              >
+                Apagar piso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {deleting && (
         <DeleteDialog
           name={project.name}
@@ -297,6 +401,7 @@ function describeEvent(kind: string, from: ProjectStatus | null, to: ProjectStat
   if (kind === "criado") return "Projeto criado";
   if (kind === "arquivado") return "Arquivado";
   if (kind === "desarquivado") return "Desarquivado";
+  if (kind === "piso_apagado") return "Piso apagado";
   return `${from ? PROJECT_STATUS_LABEL[from] : "—"} → ${to ? PROJECT_STATUS_LABEL[to] : "—"}`;
 }
 

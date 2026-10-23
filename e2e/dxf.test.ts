@@ -184,4 +184,30 @@ describe("DXF", () => {
     assert.equal(await p.getByLabel("Ver arq_vista 1").isChecked(), false);
     await p.locator(".panel").getByText("Sala de estar/jantar").waitFor();
   });
+
+  it("segundo piso do mesmo DXF: a planta já usada aparece marcada; apagar o piso mantém o ficheiro", async () => {
+    await p.locator(".crumbs").getByRole("link", { name: "Casa nova" }).click();
+    await p.waitForURL(/#\/projeto\//);
+    await p.getByPlaceholder("ex.: Piso -1").fill("Piso 1");
+    await p.getByRole("button", { name: "Adicionar piso" }).click();
+    await p.waitForURL(/#\/piso\//);
+    await p.locator(".candidate").first().waitFor();
+    await p.locator(".candidate").first().getByText("Em uso: R/C").waitFor();
+    assert.equal(await p.locator(".candidate").nth(1).getByText(/Em uso/).count(), 0);
+    await p.getByRole("button", { name: "Planta 2" }).click();
+    await p.getByRole("button", { name: "Usar esta planta" }).click();
+    await p.locator(".layer-panel").waitFor();
+
+    await p.locator(".crumbs").getByRole("link", { name: "Casa nova" }).click();
+    await p.waitForURL(/#\/projeto\//);
+    await p.locator("table tbody tr.clickable").nth(1).waitFor();
+    assert.equal(await p.locator("table tbody tr.clickable").count(), 2);
+    await p.getByRole("button", { name: "Apagar piso Piso 1" }).click();
+    await p.locator(".modal").getByRole("button", { name: "Apagar piso" }).click();
+    await p.locator(".history").getByText("Piso apagado").waitFor();
+    assert.equal(await p.locator("table tbody tr.clickable").count(), 1);
+    // o piso que resta continua a abrir (o ficheiro partilhado não foi apagado)
+    await p.locator("table tbody tr.clickable").first().click();
+    await p.locator(".layer-panel").waitFor();
+  });
 });

@@ -114,6 +114,17 @@ Output = `DXF`, versão `ACAD2018`) ou, no AutoCAD/BricsCAD, *Guardar como → D
 A região e as unidades só se mudam com o piso vazio (definem a escala). As layers mudam-se
 a qualquer momento sem retirar a aprovação.
 
+## Vários pisos
+
+Um DXF traz normalmente vários pisos (piso 0, piso -1, cobertura) e um PDF pode ter um piso
+por página. Na página do projeto, **Adicionar piso de um ficheiro já importado** cria um
+piso novo a partir do mesmo ficheiro, sem o importar outra vez; depois escolhes a planta
+(DXF) ou a página (PDF). Na escolha da planta, as que já estão em uso noutro piso aparecem
+marcadas.
+
+**Apagar um piso** (× na linha do piso) apaga a geometria traçada; o ficheiro só é apagado
+quando nenhum outro piso o usa. Bloqueado em projetos Adjudicados, Em obra ou Concluídos.
+
 ## Projetos: estados, arquivar e apagar
 
 Cada projeto segue o workflow **Levantamento → Orçamento → Enviado → Adjudicado → Em obra →

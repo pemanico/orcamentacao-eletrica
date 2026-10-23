@@ -19,14 +19,25 @@ export interface FloorSummary {
   rev: number;
   approvedAt: string | null;
   updatedAt: string;
+  sourceFile: string;
+  sourceKind: "pdf" | "dxf";
+  sourceMeta: Partial<DxfSourceMeta> | null;
+  pdfPage: number;
   roomCount: number;
   wallCount: number;
   calibrated: boolean;
   errorCount: number;
 }
 
+export interface ProjectSource {
+  file: string;
+  originalName: string;
+  kind: "pdf" | "dxf";
+  floors: string[];
+}
+
 export interface ProjectEvent {
-  kind: "criado" | "estado" | "arquivado" | "desarquivado";
+  kind: "criado" | "estado" | "arquivado" | "desarquivado" | "piso_apagado";
   from: ProjectStatus | null;
   to: ProjectStatus | null;
   note: string;
@@ -35,6 +46,7 @@ export interface ProjectEvent {
 
 export interface ProjectDetail extends Project {
   floors: FloorSummary[];
+  sources: ProjectSource[];
   events: ProjectEvent[];
 }
 
@@ -45,6 +57,7 @@ export interface Floor {
   ceilingHeightM: number;
   pdfOriginalName: string;
   pdfPage: number;
+  sourceFile: string;
   sourceKind: "pdf" | "dxf";
   sourceMeta: Partial<DxfSourceMeta> | null;
   state: FloorState;
@@ -114,6 +127,10 @@ export const api = {
       body: file,
     });
   },
+  /** novo piso a partir do ficheiro de outro piso (mesmo DXF, ou outra página do mesmo PDF) */
+  copyFloor: (fromFloorId: string, data: { name: string; ceilingHeightM: number; pdfPage?: number }) =>
+    call<Floor>(`/api/floors/${fromFloorId}/copy`, json("POST", data)),
+  deleteFloor: (id: string) => call<{ ok: true; fileRemoved: boolean }>(`/api/floors/${id}`, json("DELETE", { confirm: true })),
   getFloor: (id: string) => call<Floor>(`/api/floors/${id}`),
   saveFloor: (id: string, data: { rev: number; state?: FloorState; name?: string; ceilingHeightM?: number }) =>
     call<Floor>(`/api/floors/${id}`, json("PUT", data)),

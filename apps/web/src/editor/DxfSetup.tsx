@@ -27,10 +27,13 @@ const HEADER_LABEL: Record<number, string> = { 1: "polegadas", 2: "pés", 4: "mi
 export function DxfSetup({
   drawing,
   initial,
+  used = [],
   onConfirm,
   onCancel,
 }: {
   drawing: DxfDrawing;
+  /** plantas já usadas por outros pisos do mesmo ficheiro */
+  used?: { name: string; region: Region }[];
   initial?: { region: Region; unit: DxfUnit } | null;
   onConfirm: (region: Region, unit: DxfUnit) => Promise<void>;
   onCancel?: () => void;
@@ -122,6 +125,17 @@ export function DxfSetup({
 
   const roomsInRegion = region ? drawing.texts.filter((t) => isRoom(t.text) && inRegion(t.at, region)).length : 0;
 
+  /** Pisos que já usam (sobretudo) a mesma zona. */
+  const usedBy = (r: Region) =>
+    used
+      .filter((u) => {
+        const ix = Math.max(0, Math.min(r.maxX, u.region.maxX) - Math.max(r.minX, u.region.minX));
+        const iy = Math.max(0, Math.min(r.maxY, u.region.maxY) - Math.max(r.minY, u.region.minY));
+        const area = (x: Region) => (x.maxX - x.minX) * (x.maxY - x.minY);
+        return (ix * iy) / Math.min(area(r), area(u.region)) > 0.5;
+      })
+      .map((u) => u.name);
+
   /** Seleciona uma planta encontrada e centra a vista nela. */
   const pick = (r: Region) => {
     const a = fromDxf({ x: r.minX, y: r.maxY });
@@ -208,6 +222,7 @@ export function DxfSetup({
                   <span className="cand-title">
                     Planta {i + 1} · {c.rooms.length} divisões
                   </span>
+                  {usedBy(c.region).length > 0 && <span className="cand-used">Em uso: {usedBy(c.region).join(", ")}</span>}
                   <span className="muted small">{c.rooms.slice(0, 4).join(", ")}…</span>
                   {c.diff.length > 0 && (
                     <span className="cand-diff">
