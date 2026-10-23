@@ -59,7 +59,9 @@ export const ROOM_TYPES = [
   "hall",
   "lavandaria",
   "garagem",
+  "sala_maquinas",
   "arrumos",
+  "closet",
   "exterior",
   "outro",
 ] as const;
@@ -76,7 +78,9 @@ export const ROOM_TYPE_LABEL: Record<RoomType, string> = {
   hall: "Hall / entrada",
   lavandaria: "Lavandaria",
   garagem: "Garagem",
+  sala_maquinas: "Sala das máquinas / área técnica",
   arrumos: "Arrumos",
+  closet: "Closet / vestiário",
   exterior: "Exterior",
   outro: "Outro",
 };
@@ -84,8 +88,11 @@ export const ROOM_TYPE_LABEL: Record<RoomType, string> = {
 export interface Room {
   id: string;
   name: string;
-  /** mais do que um tipo = open space (ex.: sala + cozinha) */
-  types: RoomType[];
+  /**
+   * Códigos de tipo: os base (ROOM_TYPES) ou os criados em Regras → Tipos de divisão.
+   * Mais do que um tipo = open space (ex.: sala + cozinha).
+   */
+  types: string[];
   polygon: Point[];
 }
 

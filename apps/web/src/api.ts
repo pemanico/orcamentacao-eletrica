@@ -140,7 +140,8 @@ export const api = {
   info: () => call<DataInfo>("/api/info"),
   ruleSummary: () => call<{ id: RuleTableId; total: number; pending: number }[]>("/api/rules"),
   listRules: (t: RuleTableId) => call<RuleRow[]>(`/api/rules/${t}`),
-  createRule: (t: RuleTableId) => call<RuleRow>(`/api/rules/${t}`, json("POST", { values: {} })),
+  createRule: (t: RuleTableId, values: Record<string, string> = {}, state?: "proposta") =>
+    call<RuleRow>(`/api/rules/${t}`, json("POST", { values, state })),
   updateRule: (t: RuleTableId, id: string, patch: { values?: Record<string, string | null>; state?: RuleState; source?: string; notes?: string }) =>
     call<RuleRow>(`/api/rules/${t}/${id}`, json("PUT", patch)),
   deleteRule: (t: RuleTableId, id: string) => call<{ ok: true }>(`/api/rules/${t}/${id}`, { method: "DELETE" }),

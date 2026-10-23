@@ -5,19 +5,20 @@ import {
   RULE_STATE_LABEL,
   RULE_TABLES,
   RULE_TABLE_IDS,
-  ROOM_TYPE_LABEL,
   approvalBlockers,
+  roomTypeShort,
   type ColumnDef,
-  type RoomType,
+  type RoomTypeInfo,
   type RuleRow,
   type RuleState,
   type RuleTableId,
 } from "@orc/core";
 import { api } from "../api";
 import { RULES_CHANGED, Shell } from "../Shell";
+import { useRoomTypes } from "../roomTypes";
 
-const optionLabel = (col: ColumnDef, v: string) => {
-  if (col.key === "divisao") return ROOM_TYPE_LABEL[v as RoomType]?.split(" (")[0] ?? v;
+const optionLabel = (col: ColumnDef, v: string, catalog: RoomTypeInfo[]) => {
+  if (col.key === "divisao" || col.key === "defaults_como") return roomTypeShort(catalog, v);
   if ((CIRCUIT_KINDS as readonly string[]).includes(v)) return v === "iluminacao" ? "iluminação" : v;
   return v;
 };
@@ -31,6 +32,7 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   const [summary, setSummary] = useState<Record<string, { total: number; pending: number }>>({});
   const [onlyPending, setOnlyPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { catalog } = useRoomTypes();
 
   const refreshSummary = () =>
     api.ruleSummary().then((s) => {
@@ -58,8 +60,25 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   }
 
   async function removeRow(id: string) {
-    await api.deleteRule(tableId, id);
+    setError(null);
+    try {
+      await api.deleteRule(tableId, id);
+    } catch (e) {
+      return setError((e as Error).message);
+    }
     setRows((rs) => rs?.filter((r) => r.id !== id) ?? rs);
+    void refreshSummary();
+  }
+
+  // defaults: tipos de divisão sem nenhuma linha (ex.: um tipo acabado de criar)
+  const withoutDefaults =
+    tableId === "defaults_divisao" && rows
+      ? catalog.filter((t) => t.code !== "outro" && !t.base && !rows.some((r) => r.values.divisao === t.code))
+      : [];
+
+  async function addDefaultsFor(code: string) {
+    const row = await api.createRule("defaults_divisao", { divisao: code, elemento: "ponto_luz" });
+    setRows((rs) => [...(rs ?? []), row]);
     void refreshSummary();
   }
 
@@ -107,6 +126,20 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
             </div>
           </div>
 
+          {withoutDefaults.length > 0 && (
+            <p className="warn small" data-testid="sem-defaults">
+              Tipos sem defaults:{" "}
+              {withoutDefaults.map((t, i) => (
+                <span key={t.code}>
+                  {i > 0 && ", "}
+                  <button className="link-btn" onClick={() => void addDefaultsFor(t.code)} title="Acrescenta uma linha para este tipo">
+                    {t.short}
+                  </button>
+                </span>
+              ))}
+              . Sem linhas aprovadas, a F2 não propõe pontos nessas divisões.
+            </p>
+          )}
           {error && <p className="error">{error}</p>}
           {rows === null ? (
             <p className="muted">A carregar…</p>
@@ -130,7 +163,7 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
                 </thead>
                 <tbody>
                   {visible.map((r) => (
-                    <RuleRowEditor key={r.id} tableId={tableId} row={r} onSaved={replace} onDelete={() => removeRow(r.id)} />
+                    <RuleRowEditor key={r.id} tableId={tableId} row={r} catalog={catalog} onSaved={replace} onDelete={() => removeRow(r.id)} />
                   ))}
                   {visible.length === 0 && (
                     <tr>
@@ -149,7 +182,19 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   );
 }
 
-function RuleRowEditor({ tableId, row, onSaved, onDelete }: { tableId: RuleTableId; row: RuleRow; onSaved: (r: RuleRow) => void; onDelete: () => void }) {
+function RuleRowEditor({
+  tableId,
+  row,
+  catalog,
+  onSaved,
+  onDelete,
+}: {
+  tableId: RuleTableId;
+  row: RuleRow;
+  catalog: RoomTypeInfo[];
+  onSaved: (r: RuleRow) => void;
+  onDelete: () => void;
+}) {
   const def = RULE_TABLES[tableId];
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -179,9 +224,9 @@ function RuleRowEditor({ tableId, row, onSaved, onDelete }: { tableId: RuleTable
                 onChange={(e) => save({ values: { [c.key]: e.target.value || null } })}
               >
                 <option value="">—</option>
-                {c.options!.map((o) => (
+                {(c.dynamicOptions === "room_types" ? catalog.map((t) => t.code) : c.options!).map((o) => (
                   <option key={o} value={o}>
-                    {optionLabel(c, o)}
+                    {optionLabel(c, o, catalog)}
                   </option>
                 ))}
               </select>

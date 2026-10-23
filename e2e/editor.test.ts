@@ -117,7 +117,7 @@ describe("F1 — planta", () => {
     await clickAt(at(0, 0)); // fecha no primeiro ponto
     await page.getByPlaceholder("ex.: Quarto 1").fill("Sala e cozinha");
     const modal = page.locator(".modal");
-    await modal.getByLabel("Sala").check();
+    await modal.getByLabel("Sala", { exact: true }).check();
     await modal.getByLabel("Cozinha").check();
     await page.getByRole("button", { name: "Criar divisão" }).click();
     await page.locator(".panel").getByText("33,60 m²").waitFor();
@@ -163,6 +163,34 @@ describe("F1 — planta", () => {
     if (shots) await page.screenshot({ path: join(shots, "diagonal.png") });
   });
 
+  it("cria um tipo de divisão novo a partir do diálogo", async () => {
+    await page.keyboard.press("d");
+    for (const [x, y] of [[4.2, 0], [10, 0], [10, 8], [4.2, 8]] as const) await clickAt(at(x, y));
+    await clickAt(at(4.2, 0));
+    const modal = page.locator(".modal");
+    // a planta tem "QUARTO 1" nesta zona: a app sugere esse nome e o tipo; trocamos
+    assert.equal(await modal.getByPlaceholder("ex.: Quarto 1").inputValue(), "QUARTO 1");
+    await modal.getByLabel("Quarto", { exact: true }).uncheck();
+    await modal.getByPlaceholder("ex.: Quarto 1").fill("");
+    await modal.getByRole("button", { name: "+ Novo tipo" }).click();
+    await modal.getByLabel("Nome do novo tipo").fill("Adega");
+    await modal.getByLabel("Defaults do novo tipo").selectOption("arrumos");
+    if (shots) await modal.screenshot({ path: join(shots, "novo-tipo.png") });
+    await modal.getByLabel("Nome do novo tipo").press("Enter"); // Enter cria o tipo, não a divisão
+    await modal.getByLabel(/^Adega/).waitFor();
+    assert.equal(await modal.getByLabel(/^Adega/).isChecked(), true, "o tipo novo fica escolhido");
+    assert.equal(await modal.getByPlaceholder("ex.: Quarto 1").inputValue(), "Adega", "o nome da divisão vem do tipo");
+    await modal.getByRole("button", { name: "Criar divisão" }).click();
+    await page.locator(".panel tr.clickable", { hasText: "Adega" }).waitFor();
+
+    const types = await page.evaluate(() => fetch("/api/rules/tipos_divisao").then((r) => r.json()));
+    assert.deepEqual(
+      types.map((t: { values: Record<string, string>; state: string }) => [t.values.codigo, t.values.defaults_como, t.state]),
+      [["adega", "arrumos", "proposta"]],
+    );
+    await page.keyboard.press("Control+z"); // deixa o piso como estava para os passos seguintes
+  });
+
   it("painel e ajuda recolhem para libertar a planta, e a escolha fica guardada", async () => {
     const before = (await page.locator("svg.canvas").boundingBox())!.width;
     await page.keyboard.press("Tab");
@@ -204,14 +232,14 @@ describe("F1 — planta", () => {
     const first = page.locator("tr.rule-row").first();
     assert.equal(await first.getByLabel("Elemento").inputValue(), "ponto_luz");
     await first.getByLabel("Estado").selectOption("aprovada");
-    await page.locator(".tabs a.active .tab-count").getByText("27").waitFor();
+    await page.locator(".tabs a.active .tab-count").getByText("32").waitFor();
     await page.locator(".menu-badge").getByText(String(before - 1), { exact: true }).waitFor();
 
     // editar a quantidade de uma linha aprovada retira a aprovação
     const qtd = first.getByLabel("Qtd.");
     await qtd.fill("2");
     await qtd.press("Enter");
-    await page.locator(".tabs a.active .tab-count").getByText("28").waitFor();
+    await page.locator(".tabs a.active .tab-count").getByText("33").waitFor();
     assert.equal(await first.getByLabel("Estado").inputValue(), "proposta");
 
     // tabela técnica: sem valores nem fonte, "Aprovada" está bloqueado e explica porquê

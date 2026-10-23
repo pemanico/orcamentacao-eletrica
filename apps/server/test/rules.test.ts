@@ -46,7 +46,7 @@ describe("Regras", () => {
   it("carrega os valores iniciais dos CSV, sem aprovar nada", async () => {
     const r = await req("GET", "/api/rules");
     const by = Object.fromEntries(r.body.map((t: { id: string }) => [t.id, t]));
-    assert.equal(by.defaults_divisao.total, 28);
+    assert.equal(by.defaults_divisao.total, 33);
     assert.equal(by.tipos_circuito.total, 17);
     assert.equal(by.parametros.total, 3);
     for (const t of r.body) assert.equal(t.pending, t.total, `${t.id} não devia ter nada aprovado`);
@@ -61,7 +61,7 @@ describe("Regras", () => {
     const again = buildApp({ db, dataDir, rulesSeedDir: seedDir });
     again.close();
     const r = await req("GET", "/api/rules");
-    assert.equal(r.body.find((t: { id: string }) => t.id === "defaults_divisao").total, 28);
+    assert.equal(r.body.find((t: { id: string }) => t.id === "defaults_divisao").total, 33);
   });
 
   it("valida os valores e aceita vírgula decimal", async () => {
@@ -113,6 +113,42 @@ describe("Regras", () => {
     assert.deepEqual([...raw.slice(0, 3)], [0xef, 0xbb, 0xbf]);
     const rows = parseCsv(r.text);
     assert.equal(rows.find((x) => x.parametro === "preço da hora")?.valor, "32,5");
+  });
+
+  it("tipos de divisão do utilizador: código gerado, únicos, protegidos enquanto em uso", async () => {
+    const a = await req("POST", "/api/rules/tipos_divisao", { values: { nome: "Sala de Jogos" }, state: "proposta" });
+    assert.equal(a.status, 201);
+    assert.equal(a.body.values.codigo, "sala_de_jogos");
+    assert.equal(a.body.state, "proposta");
+    const b = await req("POST", "/api/rules/tipos_divisao", { values: { nome: "Sala de jogos" } });
+    assert.equal(b.body.values.codigo, "sala_de_jogos_2", "nunca colide com um código existente");
+    assert.equal((await req("POST", "/api/rules/tipos_divisao", { values: { nome: "x", codigo: "quarto" } })).status, 400, "não pode ser um tipo base");
+    assert.equal((await req("PUT", `/api/rules/tipos_divisao/${b.body.id}`, { values: { codigo: "sala_de_jogos" } })).status, 409);
+
+    // os defaults aceitam o tipo novo e recusam tipos inexistentes
+    const d = await req("POST", "/api/rules/defaults_divisao", { values: { divisao: "sala_de_jogos", elemento: "ponto_luz", quantidade: 2 } });
+    assert.equal(d.status, 201);
+    assert.equal((await req("POST", "/api/rules/defaults_divisao", { values: { divisao: "inventado" } })).status, 400);
+    assert.equal((await req("POST", "/api/rules/defaults_divisao", { values: { divisao: "closet", elemento: "ponto_luz" } })).status, 201, "closet é um tipo base");
+
+    // em uso nos defaults: não se apaga nem muda de código
+    const del = await req("DELETE", `/api/rules/tipos_divisao/${a.body.id}`);
+    assert.equal(del.status, 409);
+    assert.match(del.body.error, /Defaults por divisão/);
+    assert.equal((await req("PUT", `/api/rules/tipos_divisao/${a.body.id}`, { values: { codigo: "jogos" } })).status, 409);
+    assert.equal((await req("PUT", `/api/rules/tipos_divisao/${a.body.id}`, { values: { nome: "Sala de jogos e cinema" } })).status, 200, "o nome muda à vontade");
+    await req("DELETE", `/api/rules/defaults_divisao/${d.body.id}`);
+
+    // em uso numa divisão desenhada
+    db.prepare("INSERT INTO projects (id, name, client, address) VALUES ('p1', 'Moradia X', '', '')").run();
+    db.prepare(
+      "INSERT INTO floors (id, project_id, name, ceiling_height_m, pdf_file, pdf_original_name, state_json) VALUES ('f1', 'p1', '0', 2.6, 'a.pdf', 'a.pdf', ?)",
+    ).run(JSON.stringify({ scale: null, walls: [], openings: [], rooms: [{ id: "r1", name: "Jogos", types: ["sala_de_jogos"], polygon: [] }] }));
+    const del2 = await req("DELETE", `/api/rules/tipos_divisao/${a.body.id}`);
+    assert.equal(del2.status, 409);
+    assert.match(del2.body.error, /Moradia X · piso 0: Jogos/);
+    db.prepare("DELETE FROM projects WHERE id = 'p1'").run();
+    assert.equal((await req("DELETE", `/api/rules/tipos_divisao/${a.body.id}`)).status, 200);
   });
 
   it("tabela desconhecida dá 404", async () => {

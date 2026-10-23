@@ -20,6 +20,8 @@ export interface ColumnDef {
   min?: number;
   max?: number;
   width?: number;
+  /** enum cujas opções incluem dados do utilizador (ex.: tipos de divisão criados em Regras) */
+  dynamicOptions?: "room_types";
 }
 
 export interface RuleTableDef {
@@ -41,19 +43,31 @@ export const RULE_STATE_LABEL: Record<RuleState, string> = {
   aprovada: "Aprovada",
 };
 
-export const RULE_TABLE_IDS = ["defaults_divisao", "tipos_circuito", "equipamentos", "mao_de_obra", "parametros"] as const;
+export const RULE_TABLE_IDS = ["tipos_divisao", "defaults_divisao", "tipos_circuito", "equipamentos", "mao_de_obra", "parametros"] as const;
 export type RuleTableId = (typeof RULE_TABLE_IDS)[number];
 
 export const CIRCUIT_KINDS = ["tomadas", "iluminacao", "dedicado"] as const;
 
 export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
+  tipos_divisao: {
+    id: "tipos_divisao",
+    label: "Tipos de divisão",
+    description:
+      "Tipos acrescentados por ti (ex.: adega, ginásio). Os tipos base (quarto, sala, closet, sala das máquinas…) já existem. Um tipo pode usar os defaults de um tipo base ou ter defaults próprios na tabela seguinte.",
+    requiresSource: false,
+    columns: [
+      { key: "nome", label: "Nome", kind: "text", required: true, width: 190 },
+      { key: "codigo", label: "Código", kind: "text", required: true, width: 150 },
+      { key: "defaults_como", label: "Usa os defaults de", kind: "enum", options: ROOM_TYPES, width: 170 },
+    ],
+  },
   defaults_divisao: {
     id: "defaults_divisao",
     label: "Defaults por divisão",
     description: "Pontos propostos por defeito em cada tipo de divisão. O questionário ao cliente pode alterá-los.",
     requiresSource: false,
     columns: [
-      { key: "divisao", label: "Divisão", kind: "enum", options: ROOM_TYPES, required: true, width: 150 },
+      { key: "divisao", label: "Divisão", kind: "enum", options: ROOM_TYPES, dynamicOptions: "room_types", required: true, width: 150 },
       { key: "elemento", label: "Elemento", kind: "text", required: true, width: 190 },
       { key: "quantidade", label: "Qtd.", kind: "integer", required: true, min: 0, max: 50, width: 70 },
     ],
@@ -125,12 +139,17 @@ export interface RuleRow {
 }
 
 /** Converte um texto introduzido (vírgula decimal) para o tipo da coluna. */
-export function parseCell(col: ColumnDef, raw: unknown): { ok: true; value: string | number | null } | { ok: false; error: string } {
+export function parseCell(
+  col: ColumnDef,
+  raw: unknown,
+  /** opções efetivas de um enum dinâmico (por defeito col.options) */
+  options: readonly string[] | undefined = col.options,
+): { ok: true; value: string | number | null } | { ok: false; error: string } {
   if (raw === null || raw === undefined || (typeof raw === "string" && raw.trim() === "")) return { ok: true, value: null };
   if (col.kind === "text") return { ok: true, value: String(raw).trim().slice(0, 300) };
   if (col.kind === "enum") {
     const v = String(raw).trim();
-    return col.options?.includes(v) ? { ok: true, value: v } : { ok: false, error: `${col.label}: valor inválido "${v}"` };
+    return options?.includes(v) ? { ok: true, value: v } : { ok: false, error: `${col.label}: valor inválido "${v}"` };
   }
   const n = typeof raw === "number" ? raw : Number(String(raw).replace(",", ".").trim());
   if (!Number.isFinite(n)) return { ok: false, error: `${col.label}: tem de ser um número` };

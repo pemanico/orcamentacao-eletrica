@@ -48,7 +48,9 @@ export const ROOM_COLORS: Record<string, string> = {
   hall: "#c3c9d4",
   lavandaria: "#68d391",
   garagem: "#a0aec0",
+  sala_maquinas: "#f6ad55",
   arrumos: "#a0aec0",
+  closet: "#b794f4",
   exterior: "#9ae6b4",
   outro: "#e2e8f0",
 };

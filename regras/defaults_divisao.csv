@@ -27,3 +27,8 @@ lavandaria;tomada_maquina_roupa;;a_definir;;quantas? máquina de secar?
 lavandaria;ponto_luz;;a_definir;;
 garagem;ponto_luz;;a_definir;Ordep;no circuito C11 com cozinha e sala
 exterior;ponto_luz;;a_definir;;quantos? circuito próprio?
+sala_maquinas;ponto_luz;1;proposta;;estanque (IP44+) se houver água/AQS
+sala_maquinas;tomada;1;proposta;;
+sala_maquinas;tomada_bomba_calor;;a_definir;;circuito dedicado (C12) — unidade interior / AQS?
+closet;ponto_luz;1;proposta;;
+closet;interruptor;1;proposta;;ou sensor de abertura de porta?

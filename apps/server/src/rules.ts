@@ -6,7 +6,11 @@ import {
   RULE_STATES,
   RULE_TABLES,
   RULE_TABLE_IDS,
+  ROOM_TYPE_CODE,
+  ROOM_TYPES,
   approvalBlockers,
+  isBuiltinRoomType,
+  slugifyRoomType,
   parseCell,
   parseCsv,
   pendingCount,
@@ -62,18 +66,72 @@ const toRow = (r: RuleDbRow): RuleRow => ({
 
 const newId = () => randomUUID().replace(/-/g, "").slice(0, 16);
 
+/** Códigos dos tipos de divisão criados pelo utilizador (exceto a linha `exceptId`). */
+function customRoomTypeCodes(db: Db, exceptId?: string): string[] {
+  const rows = db.prepare("SELECT id, values_json FROM rules WHERE table_id = 'tipos_divisao'").all() as { id: string; values_json: string }[];
+  return rows
+    .filter((r) => r.id !== exceptId)
+    .map((r) => (JSON.parse(r.values_json) as RuleValues).codigo)
+    .filter((c): c is string => typeof c === "string" && c.length > 0);
+}
+
+/** Onde um tipo de divisão está a ser usado (defaults e divisões já desenhadas). */
+export function roomTypeUsage(db: Db, code: string): string[] {
+  const out: string[] = [];
+  const defaults = (db.prepare("SELECT values_json FROM rules WHERE table_id = 'defaults_divisao'").all() as { values_json: string }[]).filter(
+    (r) => (JSON.parse(r.values_json) as RuleValues).divisao === code,
+  ).length;
+  if (defaults) out.push(`${defaults} linha(s) em Defaults por divisão`);
+  const floors = db
+    .prepare("SELECT f.name AS floor, p.name AS project, f.state_json FROM floors f JOIN projects p ON p.id = f.project_id")
+    .all() as { floor: string; project: string; state_json: string }[];
+  for (const f of floors) {
+    const rooms = (JSON.parse(f.state_json) as { rooms?: { name: string; types?: string[] }[] }).rooms ?? [];
+    const used = rooms.filter((r) => r.types?.includes(code)).map((r) => r.name);
+    if (used.length) out.push(`${f.project} · piso ${f.floor}: ${used.join(", ")}`);
+  }
+  return out;
+}
+
 /** Valida e normaliza os valores de uma linha segundo a definição da tabela. */
-function cleanValues(tableId: RuleTableId, raw: Record<string, unknown>): RuleValues {
+function cleanValues(db: Db, tableId: RuleTableId, raw: Record<string, unknown>, rowId?: string, previous?: RuleValues): RuleValues {
   const def = RULE_TABLES[tableId];
   const out: RuleValues = {};
   const errors: string[] = [];
   for (const col of def.columns) {
-    const r = parseCell(col, raw[col.key]);
+    const options = col.dynamicOptions === "room_types" ? [...ROOM_TYPES, ...customRoomTypeCodes(db)] : col.options;
+    const r = parseCell(col, raw[col.key], options);
     if (r.ok) out[col.key] = r.value;
     else errors.push(r.error);
   }
   if (errors.length) throw new HttpError(400, errors.join("; "));
+  if (tableId === "tipos_divisao") checkRoomType(db, out, rowId, previous);
   return out;
+}
+
+/**
+ * Tipos de divisão: o código gera-se a partir do nome, tem de ser único e não pode
+ * coincidir com um tipo base. Um código em uso não muda (as divisões guardam o código).
+ */
+function checkRoomType(db: Db, v: RuleValues, rowId?: string, previous?: RuleValues) {
+  const others = new Set(customRoomTypeCodes(db, rowId));
+  if (!v.codigo && typeof v.nome === "string" && v.nome) {
+    const base = slugifyRoomType(v.nome);
+    let code = base;
+    for (let i = 2; isBuiltinRoomType(code) || others.has(code); i++) code = `${base}_${i}`;
+    v.codigo = code;
+  }
+  const code = v.codigo;
+  if (typeof code === "string") {
+    if (!ROOM_TYPE_CODE.test(code)) throw new HttpError(400, "Código: só minúsculas sem acentos, algarismos e _ (ex.: sala_maquinas).");
+    if (isBuiltinRoomType(code)) throw new HttpError(400, `Código: "${code}" já é um tipo base.`);
+    if (others.has(code)) throw new HttpError(409, `Código: já existe um tipo "${code}".`);
+  }
+  const prev = previous?.codigo;
+  if (typeof prev === "string" && prev && prev !== code) {
+    const used = roomTypeUsage(db, prev);
+    if (used.length) throw new HttpError(409, `O código "${prev}" está em uso e não pode mudar: ${used.join("; ")}.`, { used });
+  }
 }
 
 /**
@@ -133,15 +191,18 @@ export function registerRuleRoutes(router: Router, db: Db) {
     .on("GET", "/api/rules/:table", ({ params }) => list(tableParam(params.table)))
     .on("POST", "/api/rules/:table", async ({ req, res, params }) => {
       const t = tableParam(params.table);
-      const body = (await readJson(req)) as { values?: Record<string, unknown> };
-      const values = cleanValues(t, body.values ?? {});
+      const body = (await readJson(req)) as { values?: Record<string, unknown>; state?: string };
+      const values = cleanValues(db, t, body.values ?? {});
       const { p } = db.prepare("SELECT COALESCE(MAX(position), 0) AS p FROM rules WHERE table_id = ?").get(t) as { p: number };
       const id = newId();
-      db.prepare("INSERT INTO rules (id, table_id, position, values_json, state) VALUES (?, ?, ?, ?, 'a_definir')").run(
+      // uma linha criada já preenchida (ex.: tipo novo no editor) fica como proposta
+      const state: RuleState = body.state === "proposta" ? "proposta" : "a_definir";
+      db.prepare("INSERT INTO rules (id, table_id, position, values_json, state) VALUES (?, ?, ?, ?, ?)").run(
         id,
         t,
         p + 10,
         JSON.stringify(values),
+        state,
       );
       res.statusCode = 201;
       return toRow(get(id)!);
@@ -156,7 +217,7 @@ export function registerRuleRoutes(router: Router, db: Db) {
       if (!row || row.table_id !== t) throw new HttpError(404, "Regra não encontrada.");
       const input = updateInput.parse(await readJson(req));
       const current = toRow(row);
-      const values = input.values ? cleanValues(t, { ...current.values, ...input.values }) : current.values;
+      const values = input.values ? cleanValues(db, t, { ...current.values, ...input.values }, current.id, current.values) : current.values;
       const source = input.source !== undefined ? input.source.trim() : current.source;
       const notes = input.notes !== undefined ? input.notes.trim() : current.notes;
       const contentChanged = JSON.stringify(values) !== JSON.stringify(current.values) || source !== current.source;
@@ -178,6 +239,12 @@ export function registerRuleRoutes(router: Router, db: Db) {
     })
     .on("DELETE", "/api/rules/:table/:id", ({ params }) => {
       const t = tableParam(params.table);
+      if (t === "tipos_divisao") {
+        const row = get(params.id!);
+        const code = row ? (JSON.parse(row.values_json) as RuleValues).codigo : null;
+        const used = typeof code === "string" && code ? roomTypeUsage(db, code) : [];
+        if (used.length) throw new HttpError(409, `Tipo em uso, não pode ser apagado: ${used.join("; ")}.`, { used });
+      }
       const r = db.prepare("DELETE FROM rules WHERE id = ? AND table_id = ?").run(params.id!, t);
       if (Number(r.changes) !== 1) throw new HttpError(404, "Regra não encontrada.");
       return { ok: true };

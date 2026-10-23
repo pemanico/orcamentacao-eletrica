@@ -9,6 +9,8 @@ import {
   defaultVisibleLayer,
   dxfToPage,
   guessRoomType,
+  buildRoomTypeCatalog,
+  slugifyRoomType,
   guessUnits,
   labelForPolygon,
   looksLikeRoomName,
@@ -165,9 +167,37 @@ describe("nomes das divisões", () => {
       ["Dispensa", "arrumos"],
       ["Alpendre 1", "exterior"],
       ["Garagem", "garagem"],
+      ["Closet", "closet"],
+      ["Vestiário 2", "closet"],
+      ["Sala das máquinas", "sala_maquinas"],
+      ["Sala de maquinas", "sala_maquinas"],
+      ["Área técnica", "sala_maquinas"],
       ["Coisa", null],
     ];
     for (const [t, exp] of cases) assert.equal(guessRoomType(t), exp, t);
+  });
+
+  it("reconhece os tipos criados pelo utilizador, antes dos base", () => {
+    const custom = [{ code: "adega", label: "Adega" }, { code: "sala_jogos", label: "Sala de jogos" }];
+    assert.equal(guessRoomType("Adega 1", custom), "adega");
+    assert.equal(guessRoomType("SALA DE JOGOS", custom), "sala_jogos", "ganha a 'sala'");
+    assert.equal(guessRoomType("Sala de estar", custom), "sala");
+    assert.equal(guessRoomType("Adegas", custom), null, "só palavra inteira");
+  });
+
+  it("catálogo: base + do utilizador, código a partir do nome", () => {
+    const cat = buildRoomTypeCatalog([
+      { values: { codigo: "adega", nome: "Adega", defaults_como: "arrumos" } },
+      { values: { codigo: "quarto", nome: "Duplicado" } },
+      { values: { codigo: "", nome: "Sem código" } },
+    ]);
+    assert.equal(cat.at(-1)!.code, "outro");
+    assert.ok(cat.some((t) => t.code === "closet" && t.builtin));
+    const adega = cat.find((t) => t.code === "adega")!;
+    assert.equal(adega.base, "arrumos");
+    assert.equal(cat.filter((t) => t.code === "quarto").length, 1, "um tipo do utilizador nunca substitui um base");
+    assert.equal(slugifyRoomType("Sala das Máquinas"), "sala_das_maquinas");
+    assert.equal(slugifyRoomType("2.º quarto"), "t_2_quarto");
   });
 
   it("ignora siglas, cotas e títulos de desenhos", () => {

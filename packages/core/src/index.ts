@@ -9,3 +9,4 @@ export * from "./rules";
 export * from "./projects";
 export * from "./dxf";
 export * from "./roomNames";
+export * from "./roomTypes";

@@ -138,8 +138,8 @@ Concluído**, com **Perdido** a partir de Enviado. Cada mudança fica no histór
 
 ## Regras (F0)
 
-Menu **Regras**: cinco tabelas (defaults por divisão, tipos de circuito, equipamentos, mão
-de obra, parâmetros). Edita diretamente nas células e grava ao sair da célula.
+Menu **Regras**: seis tabelas (tipos de divisão, defaults por divisão, tipos de circuito,
+equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava ao sair da célula.
 
 - Estados: **A definir** → **Proposta** → **Aprovada**. Só as aprovadas entram nos cálculos.
 - Uma linha só pode ser aprovada com os campos obrigatórios (*) preenchidos; nas tabelas
@@ -147,6 +147,22 @@ de obra, parâmetros). Edita diretamente nas células e grava ao sair da célula
 - Alterar uma regra aprovada retira-lhe a aprovação.
 - O número no menu **Regras** é o total por aprovar.
 - **Exportar CSV** abre no Excel, para levar ao formador.
+
+### Tipos de divisão
+
+Os tipos base estão na app: quarto, escritório (tratado como quarto), sala, cozinha, casa de
+banho, corredor, hall, lavandaria, garagem, **sala das máquinas / área técnica**, arrumos,
+**closet / vestiário**, exterior e outro. Para outros (adega, ginásio…):
+
+- no diálogo **Nova divisão** → **+ Novo tipo** (nome e, opcionalmente, "Usa os defaults de"
+  um tipo base), ou
+- em **Regras → Tipos de divisão** → **+ Linha**.
+
+O código (ex. `adega`) gera-se a partir do nome e não muda depois de usado, porque as divisões
+guardam o código. O nome muda à vontade. Um tipo usado em divisões ou nos defaults não se
+apaga (a mensagem diz onde está a ser usado). Os tipos novos reconhecem-se também nos nomes
+do arquiteto ("Adega 1" → Adega). Em **Defaults por divisão** aparecem os tipos sem
+nenhuma linha: sem defaults aprovados, a F2 não propõe pontos nessa divisão.
 
 As regras ficam na base de dados local (`data/`), por isso as horas, o preço da hora e as
 margens nunca vão para o GitHub. A pasta `regras/` só tem os valores iniciais, carregados

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
-import { guessRoomType, labelForPolygon } from "@orc/core";
+import { guessRoomType, labelForPolygon, normalizeName, roomTypeShort, type RoomTypeInfo } from "@orc/core";
 import {
   ROOM_TYPES,
-  ROOM_TYPE_LABEL,
   SnapIndex,
   CalibrationError,
   areaUnitsToM2,
@@ -23,13 +22,13 @@ import {
   type OpeningKind,
   type Point,
   type Room,
-  type RoomType,
   type SnapResult,
   type Wall,
 } from "@orc/core";
 import { ApiError, api, type Floor } from "../api";
 import type { LoadedPlan } from "../pdf";
-import { ROOM_COLORS, formatM, openingGeometry } from "./draw";
+import { formatM, openingGeometry } from "./draw";
+import { roomColor, useRoomTypes } from "../roomTypes";
 import { useHistory } from "./useHistory";
 
 type Tool = "selecionar" | "calibrar" | "parede" | "porta" | "janela" | "divisao";
@@ -97,7 +96,8 @@ export function Editor({
   const [mods, setMods] = useState({ shift: false, alt: false, space: false });
   const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [calibDialog, setCalibDialog] = useState<{ a: Point; b: Point } | null>(null);
-  const [roomDialog, setRoomDialog] = useState<{ polygon: Point[]; suggestion?: { name: string; type: RoomType | null } } | null>(null);
+  const [roomDialog, setRoomDialog] = useState<{ polygon: Point[]; suggestion?: { name: string; type: string | null } } | null>(null);
+  const roomTypes = useRoomTypes();
   const [message, setMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("guardado");
   const [panelOpen, setPanelOpen] = usePref("orc.painel", true);
@@ -207,8 +207,8 @@ export function Editor({
   const finishRoom = (poly: Point[]) => {
     if (poly.length < 3) return setMessage("Uma divisão precisa de pelo menos 3 cantos.");
     // nome do arquiteto que está dentro da divisão (DXF ou PDF)
-    const label = labelForPolygon(poly, plan.labels ?? []);
-    setRoomDialog({ polygon: poly, suggestion: label ? { name: label.text, type: guessRoomType(label.text) } : undefined });
+    const label = labelForPolygon(poly, plan.labels ?? [], roomTypes.custom);
+    setRoomDialog({ polygon: poly, suggestion: label ? { name: label.text, type: guessRoomType(label.text, roomTypes.custom) } : undefined });
     setDraft([]);
   };
 
@@ -587,7 +587,7 @@ export function Editor({
 
             {shown.rooms.map((r) => {
               const c = polygonCentroid(r.polygon);
-              const color = ROOM_COLORS[r.types[0] ?? "outro"];
+              const color = roomColor(r.types[0], roomTypes.catalog);
               const area = scale ? areaUnitsToM2(polygonArea(r.polygon), scale) : null;
               return (
                 <g key={r.id} data-kind="room" data-id={r.id} className={tool === "selecionar" ? "pickable" : "inert"}>
@@ -835,7 +835,7 @@ export function Editor({
               Nome
               <input value={selRoom.name} onChange={(e) => updateRoom(selRoom.id, { name: e.target.value })} />
             </label>
-            <TypePicker value={selRoom.types} onChange={(types) => updateRoom(selRoom.id, { types })} />
+            <TypePicker value={selRoom.types} onChange={(types) => updateRoom(selRoom.id, { types })} catalog={roomTypes.catalog} onCreate={roomTypes.create} />
             {scale && (
               <p>
                 Área {formatM(areaUnitsToM2(polygonArea(selRoom.polygon), scale))} m² · perímetro{" "}
@@ -865,10 +865,10 @@ export function Editor({
                     }}
                   >
                     <td>
-                      <span className="swatch" style={{ background: ROOM_COLORS[r.types[0] ?? "outro"] }} />
+                      <span className="swatch" style={{ background: roomColor(r.types[0], roomTypes.catalog) }} />
                       {r.name}
                     </td>
-                    <td className="muted">{r.types.map((t) => ROOM_TYPE_LABEL[t].split(" ")[0]).join(" + ")}</td>
+                    <td className="muted">{r.types.map((t) => roomTypeShort(roomTypes.catalog, t)).join(" + ")}</td>
                     <td className="num">{scale ? `${formatM(areaUnitsToM2(polygonArea(r.polygon), scale))} m²` : "—"}</td>
                   </tr>
                 ))}
@@ -931,6 +931,8 @@ export function Editor({
       {roomDialog && (
         <RoomDialog
           suggestion={roomDialog.suggestion}
+          catalog={roomTypes.catalog}
+          onCreateType={roomTypes.create}
           existingNames={state.rooms.map((r) => r.name)}
           onCancel={() => setRoomDialog(null)}
           onConfirm={(name, types) => {
@@ -996,21 +998,104 @@ function NumberField({ label, value, min, max, onCommit }: { label: string; valu
   );
 }
 
-function TypePicker({ value, onChange }: { value: RoomType[]; onChange: (v: RoomType[]) => void }) {
+function TypePicker({
+  value,
+  onChange,
+  catalog,
+  onCreate,
+}: {
+  value: string[];
+  /** `label`: nome do tipo acabado de criar (o catálogo ainda não o tem) */
+  onChange: (v: string[], label?: string) => void;
+  catalog: RoomTypeInfo[];
+  /** cria um tipo novo e devolve o código */
+  onCreate: (name: string, base: string | null) => Promise<string>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [base, setBase] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // tipos usados pela divisão que entretanto deixaram de existir continuam visíveis
+  const missing = value.filter((c) => !catalog.some((t) => t.code === c));
+  const toggle = (code: string, on: boolean) => onChange(on ? [...value, code] : value.filter((x) => x !== code));
+
+  async function create() {
+    const n = name.trim();
+    if (!n) return;
+    const existing = catalog.find((t) => normalizeName(t.short) === normalizeName(n) || normalizeName(t.label) === normalizeName(n));
+    if (existing) {
+      if (!value.includes(existing.code)) onChange([...value, existing.code]);
+      setAdding(false);
+      setName("");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const code = await onCreate(n, base || null);
+      onChange([...value, code], n);
+      setAdding(false);
+      setName("");
+      setBase("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <fieldset className="types">
       <legend>Tipo (vários = open space)</legend>
-      {ROOM_TYPES.map((t) => (
-        <label key={t} className="check">
-          <input
-            type="checkbox"
-            checked={value.includes(t)}
-            onChange={(e) => onChange(e.target.checked ? [...value, t] : value.filter((x) => x !== t))}
-          />
-          <span className="swatch" style={{ background: ROOM_COLORS[t] }} />
-          {ROOM_TYPE_LABEL[t]}
+      {[...catalog.map((t) => ({ code: t.code, label: t.label, mine: !t.builtin })), ...missing.map((c) => ({ code: c, label: `${c} (já não existe)`, mine: true }))].map((t) => (
+        <label key={t.code} className="check">
+          <input type="checkbox" checked={value.includes(t.code)} onChange={(e) => toggle(t.code, e.target.checked)} />
+          <span className="swatch" style={{ background: roomColor(t.code, catalog) }} />
+          {t.label}
+          {t.mine && <span className="muted small" title="Criado por ti (Regras → Tipos de divisão)"> ★</span>}
         </label>
       ))}
+      <div className="new-type">
+        {adding ? (
+          <>
+            <input
+              autoFocus
+              aria-label="Nome do novo tipo"
+              placeholder="ex.: Adega"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void create();
+                }
+              }}
+            />
+            <select aria-label="Defaults do novo tipo" value={base} onChange={(e) => setBase(e.target.value)}>
+              <option value="">Defaults próprios (definir em Regras)</option>
+              {ROOM_TYPES.filter((t) => t !== "outro").map((t) => (
+                <option key={t} value={t}>
+                  Usa os defaults de {roomTypeShort(catalog, t)}
+                </option>
+              ))}
+            </select>
+            <div className="row">
+              <button type="button" className="small-btn primary" disabled={!name.trim() || busy} onClick={() => void create()}>
+                Criar tipo
+              </button>
+              <button type="button" className="small-btn" onClick={() => setAdding(false)}>
+                Cancelar
+              </button>
+            </div>
+            {error && <p className="error small">{error}</p>}
+          </>
+        ) : (
+          <button type="button" className="small-btn" onClick={() => setAdding(true)}>
+            + Novo tipo
+          </button>
+        )}
+      </div>
     </fieldset>
   );
 }
@@ -1101,17 +1186,21 @@ function CalibrationDialog({
 
 function RoomDialog({
   suggestion,
+  catalog,
+  onCreateType,
   existingNames,
   onCancel,
   onConfirm,
 }: {
-  suggestion?: { name: string; type: RoomType | null };
+  suggestion?: { name: string; type: string | null };
+  catalog: RoomTypeInfo[];
+  onCreateType: (name: string, base: string | null) => Promise<string>;
   existingNames: string[];
   onCancel: () => void;
-  onConfirm: (name: string, types: RoomType[]) => void;
+  onConfirm: (name: string, types: string[]) => void;
 }) {
   const [name, setName] = useState(suggestion?.name ?? "");
-  const [types, setTypes] = useState<RoomType[]>(suggestion?.type ? [suggestion.type] : []);
+  const [types, setTypes] = useState<string[]>(suggestion?.type ? [suggestion.type] : []);
   const duplicate = existingNames.some((n) => n.trim().toLowerCase() === name.trim().toLowerCase());
 
   return (
@@ -1130,9 +1219,11 @@ function RoomDialog({
         {duplicate && <p className="warn small">Já existe uma divisão com este nome.</p>}
         <TypePicker
           value={types}
-          onChange={(t) => {
+          catalog={catalog}
+          onCreate={onCreateType}
+          onChange={(t, label) => {
             setTypes(t);
-            if (!name.trim() && t.length === 1) setName(ROOM_TYPE_LABEL[t[0]!].split(" (")[0]!);
+            if (!name.trim() && t.length === 1) setName(label ?? roomTypeShort(catalog, t[0]!));
           }}
         />
         <div className="row end">
