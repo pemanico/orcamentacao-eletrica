@@ -1,19 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
-import { guessRoomType, labelForPolygon, normalizeName, roomTypeShort, type RoomTypeInfo } from "@orc/core";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { guessRoomType, labelForPolygon } from "@orc/core";
 import {
-  ROOM_TYPES,
   SnapIndex,
-  CalibrationError,
   areaUnitsToM2,
   calibrate,
-  canApprove,
   checkAgainstStamp,
   dist,
-  effectiveDenominator,
   metersToUnits,
   polygonArea,
   polygonCentroid,
-  polygonPerimeter,
   projectOnSegment,
   unitsToMeters,
   validateFloor,
@@ -25,50 +20,27 @@ import {
   type SnapResult,
   type Wall,
 } from "@orc/core";
-import { ApiError, api, type Floor } from "../api";
+import type { Floor } from "../api";
 import type { LoadedPlan } from "../pdf";
 import { formatM, openingGeometry } from "./draw";
 import { roomColor, useRoomTypes } from "../roomTypes";
 import { useHistory } from "./useHistory";
+import { CalibrationDialog, RoomDialog } from "./dialogs";
+import { EditorPanel } from "./EditorPanel";
+import { TOOLS, type Selection, type Tool } from "./tools";
+import { useAutosave } from "./useAutosave";
+import { usePref } from "./usePref";
+import { useViewport } from "./useViewport";
+import { angleDeg, distToLine, isTyping, uid } from "./util";
 
-type Tool = "selecionar" | "calibrar" | "parede" | "porta" | "janela" | "divisao";
-
-const TOOLS: { id: Tool; label: string; key: string; help: string }[] = [
-  { id: "selecionar", label: "Selecionar", key: "V", help: "Clica para selecionar. Arrasta o fundo para mover a vista. Arrasta os pontos de um elemento selecionado para o corrigir. Delete apaga." },
-  { id: "calibrar", label: "Calibrar", key: "C", help: "Clica nos dois extremos de uma cota conhecida (a mais longa possível) e indica o valor real." },
-  { id: "parede", label: "Parede", key: "W", help: "Clica ponto a ponto ao longo das paredes. Esc ou duplo clique termina. Orto ligado: segmentos horizontais/verticais (Shift inverte)." },
-  { id: "porta", label: "Porta", key: "P", help: "Clica sobre uma parede traçada. Depois, com a porta selecionada: F inverte o lado de abertura, H a dobradiça." },
-  { id: "janela", label: "Janela", key: "J", help: "Clica sobre uma parede traçada." },
-  { id: "divisao", label: "Divisão", key: "D", help: "Clica nos cantos da divisão. Fecha clicando no primeiro ponto ou com Enter. Em open space, desenha uma área e escolhe vários tipos." },
-];
-
-type Selection = { kind: "wall" | "opening" | "room"; id: string } | null;
 type Drag =
   | { kind: "pan"; startX: number; startY: number; tx: number; ty: number; click?: Selection | "none" }
   | { kind: "wall-a" | "wall-b"; id: string }
   | { kind: "room-v"; id: string; index: number };
 
-type SaveStatus = "guardado" | "por guardar" | "a guardar" | "erro" | "conflito";
-
 const SNAP_PX = 10;
 const DEFAULT_WALL_T = 0.15;
 const DEFAULT_WIDTH: Record<OpeningKind, number> = { porta: 0.8, janela: 1.2 };
-
-const uid = () => crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-const parseNum = (s: string) => Number(s.replace(",", ".").trim());
-/** Distância de p à reta (infinita) que contém o segmento. */
-const distToLine = (p: Point, s: { a: Point; b: Point }) => {
-  const len = dist(s.a, s.b);
-  if (len === 0) return dist(p, s.a);
-  return Math.abs((s.b.x - s.a.x) * (s.a.y - p.y) - (s.a.x - p.x) * (s.b.y - s.a.y)) / len;
-};
-/** Ângulo do traço em graus (0–180, sentido anti-horário como numa planta). */
-const angleDeg = (a: Point, b: Point) => {
-  const d = (Math.atan2(a.y - b.y, b.x - a.x) * 180) / Math.PI;
-  return Math.round(((d % 180) + 180) % 180);
-};
-const isTyping =(t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
 
 export function Editor({
   floor,
@@ -86,7 +58,6 @@ export function Editor({
   const shown = preview ?? state;
 
   const [meta, setMeta] = useState({ name: floor.name, ceilingHeightM: floor.ceilingHeightM });
-  const [approvedAt, setApprovedAt] = useState(floor.approvedAt);
   const [tool, setTool] = useState<Tool>(floor.state.scale ? "selecionar" : "calibrar");
   const [draft, setDraft] = useState<Point[]>([]);
   const [cursor, setCursor] = useState<SnapResult | null>(null);
@@ -94,12 +65,10 @@ export function Editor({
   const [selection, setSelection] = useState<Selection>(null);
   const [ortho, setOrtho] = useState(true);
   const [mods, setMods] = useState({ shift: false, alt: false, space: false });
-  const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [calibDialog, setCalibDialog] = useState<{ a: Point; b: Point } | null>(null);
   const [roomDialog, setRoomDialog] = useState<{ polygon: Point[]; suggestion?: { name: string; type: string | null } } | null>(null);
   const roomTypes = useRoomTypes();
   const [message, setMessage] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("guardado");
   const [panelOpen, setPanelOpen] = usePref("orc.painel", true);
   const [hintOpen, setHintOpen] = usePref("orc.ajuda", true);
 
@@ -118,41 +87,7 @@ export function Editor({
     [shown.walls, shown.rooms, draft],
   );
   const issues = useMemo(() => validateFloor(state), [state]);
-
-  // ---------------------------------------------------------------- vista
-  const fit = useCallback(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const { width, height } = el.getBoundingClientRect();
-    const k = Math.min(width / plan.width, height / plan.height) * 0.95;
-    setView({ k, tx: (width - plan.width * k) / 2, ty: (height - plan.height * k) / 2 });
-  }, [plan.width, plan.height]);
-
-  useEffect(() => {
-    fit();
-  }, [fit]);
-
-  const toPage = (clientX: number, clientY: number): Point => {
-    const r = svgRef.current!.getBoundingClientRect();
-    return { x: (clientX - r.left - view.tx) / view.k, y: (clientY - r.top - view.ty) / view.k };
-  };
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const r = svg.getBoundingClientRect();
-      const mx = e.clientX - r.left;
-      const my = e.clientY - r.top;
-      setView((v) => {
-        const k = Math.min(60, Math.max(0.05, v.k * Math.pow(1.0015, -e.deltaY)));
-        return { k, tx: mx - ((mx - v.tx) / v.k) * k, ty: my - ((my - v.ty) / v.k) * k };
-      });
-    };
-    svg.addEventListener("wheel", onWheel, { passive: false });
-    return () => svg.removeEventListener("wheel", onWheel);
-  }, []);
+  const { view, setView, fit, toPage } = useViewport(svgRef, wrapRef, plan);
 
   // ---------------------------------------------------------------- snap
   const tol = SNAP_PX / view.k;
@@ -431,73 +366,8 @@ export function Editor({
     };
   });
 
-  // ---------------------------------------------------------------- gravação automática
-  const revRef = useRef(floor.rev);
-  const latest = useRef({ state, meta });
-  latest.current = { state, meta };
-  const savedRef = useRef(JSON.stringify({ state: floor.state, meta: { name: floor.name, ceilingHeightM: floor.ceilingHeightM } }));
-  const savingRef = useRef(false);
-  const againRef = useRef(false);
-
-  const flush = useCallback(async (): Promise<boolean> => {
-    if (savingRef.current) {
-      againRef.current = true;
-      return false;
-    }
-    const snapshot = JSON.stringify(latest.current);
-    if (snapshot === savedRef.current) return true;
-    savingRef.current = true;
-    setSaveStatus("a guardar");
-    let ok = false;
-    try {
-      const { state: st, meta: m } = latest.current;
-      const r = await api.saveFloor(floor.id, { rev: revRef.current, state: st, name: m.name, ceilingHeightM: m.ceilingHeightM });
-      revRef.current = r.rev;
-      savedRef.current = snapshot;
-      setApprovedAt(r.approvedAt);
-      ok = true;
-    } catch (err) {
-      setSaveStatus(err instanceof ApiError && err.status === 409 ? "conflito" : "erro");
-      setMessage(`Não foi possível guardar: ${(err as Error).message}`);
-      againRef.current = false;
-      return false;
-    } finally {
-      savingRef.current = false;
-    }
-    if (againRef.current || JSON.stringify(latest.current) !== savedRef.current) {
-      againRef.current = false;
-      return flush();
-    }
-    setSaveStatus("guardado");
-    return ok;
-  }, [floor.id]);
-
-  useEffect(() => {
-    if (saveStatus === "conflito") return;
-    if (JSON.stringify({ state, meta }) === savedRef.current) return;
-    setSaveStatus("por guardar");
-    const t = setTimeout(() => void flush(), 700);
-    return () => clearTimeout(t);
-  }, [state, meta, flush, saveStatus]);
-
-  useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => {
-      if (JSON.stringify(latest.current) !== savedRef.current) e.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, []);
-
-  const approve = async () => {
-    setMessage(null);
-    if (!(await flush())) return;
-    try {
-      const r = await api.approveFloor(floor.id);
-      setApprovedAt(r.approvedAt);
-    } catch (err) {
-      setMessage((err as Error).message);
-    }
-  };
+  // ---------------------------------------------------------------- gravação automática e aprovação
+  const { saveStatus, approvedAt, approve } = useAutosave(floor, state, meta, setMessage);
 
   // ---------------------------------------------------------------- render
   const k = view.k;
@@ -731,188 +601,34 @@ export function Editor({
         </footer>
       </main>
 
-      <aside className="panel">
-        {sourcePanel}
-        <section>
-          <h3>Piso</h3>
-          <label>
-            Nome
-            <input value={meta.name} onChange={(e) => setMeta({ ...meta, name: e.target.value })} />
-          </label>
-          <NumberField
-            label="Pé-direito (m)"
-            value={meta.ceilingHeightM}
-            min={2}
-            max={6}
-            onCommit={(v) => setMeta({ ...meta, ceilingHeightM: v })}
-          />
-        </section>
 
-        <section>
-          <h3>Escala</h3>
-          {isDxf && scale ? (
-            <p className="compact-row">
-              <span>
-                Exata, do DXF <span className="muted">· unidades: {String((floor.sourceMeta as { unit?: string } | null)?.unit ?? "?")}</span>
-              </span>
-            </p>
-          ) : scale && (!scaleCheck || scaleCheck.ok) ? (
-            <div className="compact-row">
-              <span>
-                1:{Math.round(effectiveDenominator(scale))} <span className="muted">· cota {formatM(scale.refMeters)} m</span>
-                {scaleCheck && <span className="ok"> · Confere com o carimbo 1:{scaleCheck.stampDenominator}.</span>}
-              </span>
-              <button className="small-btn" onClick={() => selectTool("calibrar")}>
-                Recalibrar
-              </button>
-            </div>
-          ) : scale && scaleCheck ? (
-            <>
-              <p className="warn">
-                O carimbo diz 1:{scaleCheck.stampDenominator}, mas a calibração dá 1:{Math.round(scaleCheck.effectiveDenominator)} (
-                {Math.round(scaleCheck.relativeDiff * 100)}% de diferença). O PDF foi provavelmente impresso com "ajustar à página".
-                Vale a calibração; confirma com uma segunda cota.
-              </p>
-              <button onClick={() => selectTool("calibrar")}>Recalibrar</button>
-            </>
-          ) : (
-            <>
-              <p className="warn">Por calibrar. Usa a ferramenta Calibrar numa cota longa.</p>
-              {plan.stampDenominators.length > 0 && (
-                <p className="muted">Carimbo do PDF: {plan.stampDenominators.map((d) => `1:${d}`).join(", ")}</p>
-              )}
-            </>
-          )}
-        </section>
-
-        {selWall && scale && (
-          <section className="selection">
-            <h3>Parede</h3>
-            <p>Comprimento: {formatM(unitsToMeters(dist(selWall.a, selWall.b), scale))} m</p>
-            <NumberField
-              label="Espessura (cm)"
-              value={selWall.thicknessM * 100}
-              min={5}
-              max={80}
-              onCommit={(v) => updateWall(selWall.id, { thicknessM: v / 100 })}
-            />
-            <button className="danger" onClick={deleteSelection}>
-              Apagar parede
-            </button>
-          </section>
-        )}
-
-        {selOpening && (
-          <section className="selection">
-            <h3>{selOpening.kind === "porta" ? "Porta" : "Janela"}</h3>
-            <NumberField
-              label="Largura (m)"
-              value={selOpening.widthM}
-              min={0.3}
-              max={6}
-              onCommit={(v) => updateOpening(selOpening.id, { widthM: v })}
-            />
-            {selOpening.kind === "porta" && (
-              <div className="row">
-                <button onClick={() => updateOpening(selOpening.id, { swing: selOpening.swing === "esquerda" ? "direita" : "esquerda" })}>
-                  Inverter abertura (F)
-                </button>
-                <button onClick={() => updateOpening(selOpening.id, { hinge: selOpening.hinge === "inicio" ? "fim" : "inicio" })}>
-                  Inverter dobradiça (H)
-                </button>
-              </div>
-            )}
-            <button className="danger" onClick={deleteSelection}>
-              Apagar
-            </button>
-          </section>
-        )}
-
-        {selRoom && (
-          <section className="selection">
-            <h3>Divisão</h3>
-            <label>
-              Nome
-              <input value={selRoom.name} onChange={(e) => updateRoom(selRoom.id, { name: e.target.value })} />
-            </label>
-            <TypePicker value={selRoom.types} onChange={(types) => updateRoom(selRoom.id, { types })} catalog={roomTypes.catalog} onCreate={roomTypes.create} />
-            {scale && (
-              <p>
-                Área {formatM(areaUnitsToM2(polygonArea(selRoom.polygon), scale))} m² · perímetro{" "}
-                {formatM(unitsToMeters(polygonPerimeter(selRoom.polygon), scale))} m
-              </p>
-            )}
-            <button className="danger" onClick={deleteSelection}>
-              Apagar divisão
-            </button>
-          </section>
-        )}
-
-        <section>
-          <h3>Divisões ({state.rooms.length})</h3>
-          {state.rooms.length === 0 ? (
-            <p className="muted">Nenhuma. Usa a ferramenta Divisão.</p>
-          ) : (
-            <table className="table compact">
-              <tbody>
-                {state.rooms.map((r) => (
-                  <tr
-                    key={r.id}
-                    className={`clickable ${selRoom?.id === r.id ? "active" : ""}`}
-                    onClick={() => {
-                      setTool("selecionar");
-                      setSelection({ kind: "room", id: r.id });
-                    }}
-                  >
-                    <td>
-                      <span className="swatch" style={{ background: roomColor(r.types[0], roomTypes.catalog) }} />
-                      {r.name}
-                    </td>
-                    <td className="muted">{r.types.map((t) => roomTypeShort(roomTypes.catalog, t)).join(" + ")}</td>
-                    <td className="num">{scale ? `${formatM(areaUnitsToM2(polygonArea(r.polygon), scale))} m²` : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <p className="muted">
-            {state.walls.length} paredes · {state.openings.filter((o) => o.kind === "porta").length} portas ·{" "}
-            {state.openings.filter((o) => o.kind === "janela").length} janelas
-          </p>
-        </section>
-
-        <section>
-          <h3>Validação</h3>
-          {issues.length === 0 ? (
-            <p className="ok">Sem problemas.</p>
-          ) : (
-            <ul className="issues">
-              {issues.map((i, n) => (
-                <li
-                  key={n}
-                  className={i.level}
-                  onClick={() => {
-                    const ref = i.ref;
-                    if (!ref) return;
-                    const kind = state.walls.some((w) => w.id === ref) ? "wall" : state.rooms.some((r) => r.id === ref) ? "room" : "opening";
-                    setTool("selecionar");
-                    setSelection({ kind, id: ref });
-                  }}
-                >
-                  {i.message}
-                </li>
-              ))}
-            </ul>
-          )}
-          {approvedAt ? (
-            <p className="ok">Aprovado em {new Date(approvedAt).toLocaleString("pt-PT")}. Qualquer alteração retira a aprovação.</p>
-          ) : (
-            <button className="primary" disabled={!canApprove(issues)} onClick={approve}>
-              Aprovar piso
-            </button>
-          )}
-        </section>
-      </aside>
+      <EditorPanel
+        sourcePanel={sourcePanel}
+        meta={meta}
+        setMeta={setMeta}
+        isDxf={isDxf}
+        sourceUnit={String((floor.sourceMeta as { unit?: string } | null)?.unit ?? "?")}
+        scale={scale}
+        scaleCheck={scaleCheck}
+        stampDenominators={plan.stampDenominators}
+        selectTool={selectTool}
+        select={(s) => {
+          setTool("selecionar");
+          setSelection(s);
+        }}
+        selWall={selWall}
+        selOpening={selOpening}
+        selRoom={selRoom}
+        updateWall={updateWall}
+        updateOpening={updateOpening}
+        updateRoom={updateRoom}
+        deleteSelection={deleteSelection}
+        roomTypes={roomTypes}
+        state={state}
+        issues={issues}
+        approvedAt={approvedAt}
+        approve={() => void approve()}
+      />
 
       {calibDialog && (
         <CalibrationDialog
@@ -943,298 +659,5 @@ export function Editor({
         />
       )}
     </div>
-  );
-}
-
-// ---------------------------------------------------------------- componentes auxiliares
-
-/** Preferência de interface guardada no browser (painel aberto, ajuda visível). */
-function usePref(key: string, initial: boolean): [boolean, (v: boolean) => void] {
-  const [v, setV] = useState(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw === null ? initial : raw === "1";
-    } catch {
-      return initial;
-    }
-  });
-  const set = (next: boolean) => {
-    setV(next);
-    try {
-      localStorage.setItem(key, next ? "1" : "0");
-    } catch {
-      /* sem armazenamento: fica só nesta sessão */
-    }
-  };
-  return [v, set];
-}
-
-/** Campo numérico que aceita vírgula decimal e só grava ao sair/Enter. */
-function NumberField({ label, value, min, max, onCommit }: { label: string; value: number; min: number; max: number; onCommit: (v: number) => void }) {
-  const [text, setText] = useState(String(value).replace(".", ","));
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => setText(String(Math.round(value * 1000) / 1000).replace(".", ",")), [value]);
-  const commitText = () => {
-    const v = parseNum(text);
-    if (!Number.isFinite(v) || v < min || v > max) {
-      setError(`Entre ${min} e ${max}.`);
-      return;
-    }
-    setError(null);
-    if (v !== value) onCommit(v);
-  };
-  return (
-    <label>
-      {label}
-      <input
-        inputMode="decimal"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commitText}
-        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-      />
-      {error && <span className="error small">{error}</span>}
-    </label>
-  );
-}
-
-function TypePicker({
-  value,
-  onChange,
-  catalog,
-  onCreate,
-}: {
-  value: string[];
-  /** `label`: nome do tipo acabado de criar (o catálogo ainda não o tem) */
-  onChange: (v: string[], label?: string) => void;
-  catalog: RoomTypeInfo[];
-  /** cria um tipo novo e devolve o código */
-  onCreate: (name: string, base: string | null) => Promise<string>;
-}) {
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-  const [base, setBase] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // tipos usados pela divisão que entretanto deixaram de existir continuam visíveis
-  const missing = value.filter((c) => !catalog.some((t) => t.code === c));
-  const toggle = (code: string, on: boolean) => onChange(on ? [...value, code] : value.filter((x) => x !== code));
-
-  async function create() {
-    const n = name.trim();
-    if (!n) return;
-    const existing = catalog.find((t) => normalizeName(t.short) === normalizeName(n) || normalizeName(t.label) === normalizeName(n));
-    if (existing) {
-      if (!value.includes(existing.code)) onChange([...value, existing.code]);
-      setAdding(false);
-      setName("");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const code = await onCreate(n, base || null);
-      onChange([...value, code], n);
-      setAdding(false);
-      setName("");
-      setBase("");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <fieldset className="types">
-      <legend>Tipo (vários = open space)</legend>
-      {[...catalog.map((t) => ({ code: t.code, label: t.label, mine: !t.builtin })), ...missing.map((c) => ({ code: c, label: `${c} (já não existe)`, mine: true }))].map((t) => (
-        <label key={t.code} className="check">
-          <input type="checkbox" checked={value.includes(t.code)} onChange={(e) => toggle(t.code, e.target.checked)} />
-          <span className="swatch" style={{ background: roomColor(t.code, catalog) }} />
-          {t.label}
-          {t.mine && <span className="muted small" title="Criado por ti (Regras → Tipos de divisão)"> ★</span>}
-        </label>
-      ))}
-      <div className="new-type">
-        {adding ? (
-          <>
-            <input
-              autoFocus
-              aria-label="Nome do novo tipo"
-              placeholder="ex.: Adega"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void create();
-                }
-              }}
-            />
-            <select aria-label="Defaults do novo tipo" value={base} onChange={(e) => setBase(e.target.value)}>
-              <option value="">Defaults próprios (definir em Regras)</option>
-              {ROOM_TYPES.filter((t) => t !== "outro").map((t) => (
-                <option key={t} value={t}>
-                  Usa os defaults de {roomTypeShort(catalog, t)}
-                </option>
-              ))}
-            </select>
-            <div className="row">
-              <button type="button" className="small-btn primary" disabled={!name.trim() || busy} onClick={() => void create()}>
-                Criar tipo
-              </button>
-              <button type="button" className="small-btn" onClick={() => setAdding(false)}>
-                Cancelar
-              </button>
-            </div>
-            {error && <p className="error small">{error}</p>}
-          </>
-        ) : (
-          <button type="button" className="small-btn" onClick={() => setAdding(true)}>
-            + Novo tipo
-          </button>
-        )}
-      </div>
-    </fieldset>
-  );
-}
-
-function Modal({ title, children, onCancel }: { title: string; children: ReactNode; onCancel: () => void }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [onCancel]);
-  return (
-    <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="modal" role="dialog" aria-label={title}>
-        <h3>{title}</h3>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function CalibrationDialog({
-  pair,
-  stamps,
-  onCancel,
-  onConfirm,
-}: {
-  pair: { a: Point; b: Point };
-  stamps: number[];
-  onCancel: () => void;
-  onConfirm: (meters: number, stamp: number | null) => void;
-}) {
-  const [meters, setMeters] = useState("");
-  const [stamp, setStamp] = useState<string>(stamps.length === 1 ? String(stamps[0]) : "");
-  const [error, setError] = useState<string | null>(null);
-  const units = dist(pair.a, pair.b);
-  const suggested = stamp ? (units * 0.0254 * Number(stamp)) / 72 : null;
-
-  const submit = () => {
-    try {
-      onConfirm(parseNum(meters), stamp ? Number(stamp) : null);
-    } catch (e) {
-      setError(e instanceof CalibrationError ? e.message : (e as Error).message);
-    }
-  };
-
-  return (
-    <Modal title="Calibrar escala" onCancel={onCancel}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <label>
-          Comprimento real da cota (m)
-          <input autoFocus inputMode="decimal" value={meters} onChange={(e) => setMeters(e.target.value)} placeholder="ex.: 4,20" />
-        </label>
-        <label>
-          Escala indicada no carimbo (só para conferir)
-          <select value={stamp} onChange={(e) => setStamp(e.target.value)}>
-            <option value="">Nenhuma / não sei</option>
-            {[...new Set([...stamps, 50, 100])].sort((a, b) => a - b).map((d) => (
-              <option key={d} value={d}>
-                1:{d}
-                {stamps.includes(d) ? " (lida no PDF)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        {suggested !== null && (
-          <p className="muted">
-            Se o PDF estiver à escala do carimbo, esta medida tem {formatM(suggested)} m.
-          </p>
-        )}
-        {error && <p className="error">{error}</p>}
-        <div className="row end">
-          <button type="button" onClick={onCancel}>
-            Cancelar
-          </button>
-          <button className="primary" disabled={!meters.trim()}>
-            Calibrar
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function RoomDialog({
-  suggestion,
-  catalog,
-  onCreateType,
-  existingNames,
-  onCancel,
-  onConfirm,
-}: {
-  suggestion?: { name: string; type: string | null };
-  catalog: RoomTypeInfo[];
-  onCreateType: (name: string, base: string | null) => Promise<string>;
-  existingNames: string[];
-  onCancel: () => void;
-  onConfirm: (name: string, types: string[]) => void;
-}) {
-  const [name, setName] = useState(suggestion?.name ?? "");
-  const [types, setTypes] = useState<string[]>(suggestion?.type ? [suggestion.type] : []);
-  const duplicate = existingNames.some((n) => n.trim().toLowerCase() === name.trim().toLowerCase());
-
-  return (
-    <Modal title="Nova divisão" onCancel={onCancel}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (name.trim() && types.length) onConfirm(name.trim(), types);
-        }}
-      >
-        <label>
-          Nome
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="ex.: Quarto 1" />
-        </label>
-        {suggestion && <p className="muted small">Nome lido da planta do arquiteto. Confirma o tipo (vários = open space).</p>}
-        {duplicate && <p className="warn small">Já existe uma divisão com este nome.</p>}
-        <TypePicker
-          value={types}
-          catalog={catalog}
-          onCreate={onCreateType}
-          onChange={(t, label) => {
-            setTypes(t);
-            if (!name.trim() && t.length === 1) setName(label ?? roomTypeShort(catalog, t[0]!));
-          }}
-        />
-        <div className="row end">
-          <button type="button" onClick={onCancel}>
-            Cancelar
-          </button>
-          <button className="primary" disabled={!name.trim() || types.length === 0}>
-            Criar divisão
-          </button>
-        </div>
-      </form>
-    </Modal>
   );
 }

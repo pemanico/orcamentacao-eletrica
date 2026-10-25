@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-25 · commit `eadb787` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-25 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -64,6 +64,13 @@ confirmar).
   (o material do curso dava 6 mm² por usar a coluna de 3 condutores carregados). Sem
   verificação de curto-circuito (Icn ≥ Icc máx, Icc mín ≥ Im): falta a impedância da rede.
   Ainda não ligada aos circuitos do projeto (F2/F3).
+- **Refactor antes da F2** (graphify: `buildApp()` ligava 9 comunidades; editor com coesão 0,05).
+  Servidor: `app.ts` (523 → 72 linhas) + `context.ts`, `routes/{system,projects,floors}.ts`,
+  `static.ts`. Editor: `Editor.tsx` (1240 → 663) + `EditorPanel.tsx`, `dialogs.tsx`,
+  `useAutosave.ts`, `useViewport.ts`, `usePref.ts`, `tools.ts`, `util.ts`. Só código movido.
+  **Por fazer no arranque da F2 (passo 2b, aprovado adiar):** interface `ToolHandler` com um
+  ficheiro por ferramenta em `editor/tools/`, para a ferramenta "ponto" entrar sem tocar nas
+  outras; antes, e2e de arrastar pegas e F/H na porta.
 - Achados no RTIEBT que contrariam resumos de IA: fogão mínimo **4 mm²** (801.5.8);
   30 mA obrigatório só em WC, tomadas exteriores ≤ 20 A, piscina, VE e terra > 500 Ω
   (no resto, diferencial ≤ 500 mA — 801.5.4.1/801.5.9; 30 mA em tudo é prática);
@@ -101,7 +108,10 @@ confirmar).
    - todos os circuitos com diferencial, ≤ 500 mA (801.5.4.1, 801.5.9); 30 mA e tipo A em
      tudo é prática (decisão dele);
    - reserva no quadro (20–25 %) é prática, não RTIEBT.
-7. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
+7. `typecheck:web` falha também no PC dele: `apps/web/tsconfig.json` pede `vite/client`
+   (não instalado — o build é esbuild); sem isso, `import "./styles.css"` não tem tipos; e
+   `EditorPage.tsx:72` devolve `null` num cleanup de `useEffect`. Corrigir (pequeno).
+8. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
 
 ## A casa dele (caso de teste)
 
@@ -132,5 +142,6 @@ regras/         CSV iniciais (sem valores comerciais)
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
   `npm run test:e2e`. Estado dos testes: core 54, servidor 36, e2e 27 — tudo verde.
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
-  `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo); `typecheck:web` não corre lá (faltam @types). No PC dele
+  `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
+  @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` não corre lá (faltam @types). No PC dele
   é `npm install` normal.
