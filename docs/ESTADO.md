@@ -91,7 +91,17 @@ confirmar).
    filtração, quadro parcial, equipotencial, 30 mA).
 5. **F2**: colocação de pontos a partir das regras aprovadas (+ etiquetas QE/MLL/MLR/MO/PF do
    DXF). Na F3 perguntar por onde passam os tubos (laje, teto falso, desvão) — muda os metros.
-6. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
+6. **Regras da F4 (quadro/unifilar)** — anotadas, por aprovar, sem código:
+   - calibre de cada interruptor diferencial ≥ disjuntor a montante, ou ≥ Σ IB·Ks dos
+     circuitos que alimenta (o ID não se protege contra sobrecargas; ID 40 A com DCP 45 A falha);
+   - VE: diferencial individual por ponto de ligação, mín. tipo A, corta todos os ativos
+     incluindo neutro (RTIEBT 722.531.2.101); proteção contra sobreintensidades individual
+     (722.533.101);
+   - casas de banho (701), tomadas exteriores ≤ 20 A (471.2.3) e piscina (702) atrás de 30 mA;
+   - todos os circuitos com diferencial, ≤ 500 mA (801.5.4.1, 801.5.9); 30 mA e tipo A em
+     tudo é prática (decisão dele);
+   - reserva no quadro (20–25 %) é prática, não RTIEBT.
+7. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
 
 ## A casa dele (caso de teste)
 
