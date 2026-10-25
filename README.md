@@ -153,6 +153,13 @@ equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava
   aprovadas, deixa tudo em **Proposta** e acrescenta o artigo à fonte. Precisa da coluna
   **Carga** (iluminação, tomadas, máquinas, fogão, climatização, VE…), deduzida
   automaticamente quando é óbvia. O disjuntor fica por preencher: o RTIEBT não o fixa.
+- **Calculadora de secções** (separador ao lado das tabelas): potência, cos φ, comprimento,
+  método de instalação (B tubo em alvenaria / A parede isolante), temperatura e agrupamento →
+  IB, disjuntor, secção e queda de tensão, com o quadro/artigo de cada passo (RTIEBT 433.2,
+  52-C1, 52-D1, 52-E1/52-E3, 801.5.8, 52O). Os calibres e a resistividade do cobre vêm de
+  **Parâmetros** ("Preencher com referência" cria-os): com algum calibre aprovado, só os
+  aprovados contam; valores por aprovar entram mas o resultado aparece como *provisório*.
+  Não verifica curto-circuito (precisa da impedância da rede).
 - Em Tipos de circuito, linhas com a mesma carga e secção, disjuntor ou diferencial
   diferentes mostram um aviso (ex.: C1 com 2,5 mm² e C5 com 4 mm²).
 

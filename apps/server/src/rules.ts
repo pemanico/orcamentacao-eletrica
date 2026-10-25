@@ -280,6 +280,12 @@ export function registerRuleRoutes(router: Router, db: Db, seedDir?: string) {
       if (Number(r.changes) !== 1) throw new HttpError(404, "Regra não encontrada.");
       return { ok: true };
     })
+    /** Ficheiro de referência (quadros do RTIEBT) para a calculadora de secções. */
+    .on("GET", "/api/reference", () => {
+      const file = seedDir ? join(seedDir, REFERENCE_FILE) : "";
+      if (!file || !existsSync(file)) throw new HttpError(404, `Ficheiro de referência não encontrado (regras/${REFERENCE_FILE}).`);
+      return parseReference(readFileSync(file, "utf8"));
+    })
     /** Pré-visualização do preenchimento com o ficheiro de referência (não grava nada). */
     .on("GET", "/api/rules/:table/reference-fill", ({ params }) => planFill(tableParam(params.table)))
     /** Aplica o preenchimento. O plano é recalculado aqui: nunca se confia no que o cliente viu. */

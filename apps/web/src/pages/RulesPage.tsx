@@ -137,6 +137,7 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
               )}
             </a>
           ))}
+          <a href="#/regras/calculadora">Calculadora de secções</a>
         </nav>
 
         <section className="card">

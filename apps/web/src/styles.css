@@ -1150,3 +1150,48 @@ button.danger.solid {
   margin: 8px 0;
   padding-left: 20px;
 }
+
+.calc-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .calc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.calc-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.calc-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.calc-form .span2 {
+  grid-column: span 2;
+}
+.calc-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.calc-summary div {
+  display: flex;
+  flex-direction: column;
+}
+.calc-summary strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.calc-steps td {
+  vertical-align: top;
+}
+.calc-steps .mono {
+  font-family: ui-monospace, Consolas, monospace;
+}

@@ -194,10 +194,13 @@ describe("Regras", () => {
     assert.equal(again.body.updates.length, 0, "nada mais para preencher");
 
     const params = await req("POST", "/api/rules/parametros/reference-fill");
-    assert.equal(params.body.inserts.length, 6);
+    assert.equal(params.body.inserts.length, 16);
     assert.equal((await req("POST", "/api/rules/parametros/reference-fill")).body.inserts.length, 0);
 
     assert.equal((await req("GET", "/api/rules/mao_de_obra/reference-fill")).status, 400);
+
+    const ref = await req("GET", "/api/reference");
+    assert.ok(ref.body.some((r: { grupo: string; chave: string; valor: string }) => r.grupo === "iz_pvc_cu_2carregados_B" && r.chave === "4" && r.valor === "32"));
   });
 
   it("tabela desconhecida dá 404", async () => {

@@ -267,6 +267,27 @@ describe("F1 — planta", () => {
     if (shots) await page.screenshot({ path: join(shots, "regras-referencia.png") });
   });
 
+  it("Calculadora de secções: exercício do CINEL dá C20 e 4 mm², provisório até aprovar", async () => {
+    await page.locator(".tabs").getByRole("link", { name: /Parâmetros/ }).click();
+    await page.locator(".crumbs").getByText("Parâmetros").waitFor();
+    await page.getByRole("button", { name: "Preencher com referência" }).click();
+    await page.getByTestId("fill-preview").getByRole("button", { name: "Aplicar" }).click();
+    await page.getByTestId("fill-done").waitFor();
+
+    await page.locator(".tabs").getByRole("link", { name: "Calculadora de secções" }).click();
+    await page.waitForURL(/#\/regras\/calculadora/);
+    await page.getByLabel("Carga").selectOption("termoacumulador");
+    await page.getByLabel("Potência").fill("4600");
+    await page.getByLabel("Comprimento").fill("25");
+    await page.getByLabel("Temperatura").selectOption("35");
+    await page.getByLabel("Circuitos agrupados").selectOption("3");
+    await page.getByTestId("calc-in").getByText("20 A").waitFor();
+    assert.equal(await page.getByTestId("calc-s").textContent(), "4 mm²");
+    await page.getByTestId("calc-provisorio").waitFor();
+    await page.getByText(/quadro 52-C1, DR p\.98, método B/).waitFor();
+    if (shots) await page.screenshot({ path: join(shots, "calculadora.png") });
+  });
+
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {
     await page.locator(".menu").getByRole("link", { name: "Dados" }).click();
     await page.waitForURL(/#\/dados/);

@@ -1,4 +1,4 @@
-import type { DxfSourceMeta, FloorState, Issue, ProjectStatus, ReferenceFillPlan, RuleRow, RuleState, RuleTableId } from "@orc/core";
+import type { DxfSourceMeta, FloorState, Issue, ProjectStatus, ReferenceFillPlan, ReferenceRow, RuleRow, RuleState, RuleTableId } from "@orc/core";
 
 export interface Project {
   id: string;
@@ -145,6 +145,7 @@ export const api = {
   updateRule: (t: RuleTableId, id: string, patch: { values?: Record<string, string | null>; state?: RuleState; source?: string; notes?: string }) =>
     call<RuleRow>(`/api/rules/${t}/${id}`, json("PUT", patch)),
   deleteRule: (t: RuleTableId, id: string) => call<{ ok: true }>(`/api/rules/${t}/${id}`, { method: "DELETE" }),
+  reference: () => call<ReferenceRow[]>("/api/reference"),
   referencePreview: (t: RuleTableId) => call<ReferenceFillPlan>(`/api/rules/${t}/reference-fill`),
   referenceApply: (t: RuleTableId) => call<ReferenceFillPlan>(`/api/rules/${t}/reference-fill`, { method: "POST" }),
   backup: () => call<{ folder: string; dbBytes: number; backupCount: number }>("/api/backup", { method: "POST" }),

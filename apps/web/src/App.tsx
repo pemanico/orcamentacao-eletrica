@@ -4,6 +4,7 @@ import { ProjectPage } from "./pages/ProjectPage";
 import { EditorPage } from "./pages/EditorPage";
 import { RulesPage } from "./pages/RulesPage";
 import { DataPage } from "./pages/DataPage";
+import { CalculatorPage } from "./pages/CalculatorPage";
 import { RULE_TABLE_IDS, type RuleTableId } from "@orc/core";
 
 /** Router por hash: #/ · #/projeto/:id · #/piso/:id */
@@ -22,6 +23,7 @@ export function App() {
   const project = /^#\/projeto\/([\w-]+)$/.exec(hash);
   const floor = /^#\/piso\/([\w-]+)$/.exec(hash);
   const rules = /^#\/regras(?:\/([\w-]+))?$/.exec(hash);
+  if (hash === "#/regras/calculadora") return <CalculatorPage />;
   if (rules) {
     const t = (RULE_TABLE_IDS as readonly string[]).includes(rules[1] ?? "") ? (rules[1] as RuleTableId) : "defaults_divisao";
     return <RulesPage key={t} tableId={t} />;

@@ -36,6 +36,12 @@ export function parseReference(text: string): ReferenceRow[] {
 
 type RefKey = readonly [grupo: string, chave: string];
 
+/** Nomes dos parâmetros que a calculadora de secções lê da tabela Parâmetros. */
+export const RESISTIVITY_PARAM = "resistividade do cobre";
+export const BREAKER_PARAM_PREFIX = "calibre de disjuntor";
+export const breakerParam = (amps: number) => `${BREAKER_PARAM_PREFIX} ${amps} A`;
+const BREAKER_SERIES = [6, 10, 16, 20, 25, 32, 40, 50, 63];
+
 /** Secções mínimas do RTIEBT 801.5.8 por natureza da carga. */
 const MIN_SECTION_KEY: Partial<Record<LoadKind, string>> = {
   iluminacao: "iluminacao",
@@ -75,6 +81,8 @@ const NEW_PARAMETERS: { ref: RefKey; parametro: string }[] = [
   { ref: ["potencia_minima_mono", "mais_de_6_compartimentos"], parametro: "potência mínima — mais de 6 compartimentos" },
   { ref: ["queda_tensao", "iluminacao_rede_publica"], parametro: "queda de tensão máx. — iluminação" },
   { ref: ["queda_tensao", "outros_usos_rede_publica"], parametro: "queda de tensão máx. — outros usos" },
+  { ref: ["constantes", "resistividade_cobre"], parametro: RESISTIVITY_PARAM },
+  ...BREAKER_SERIES.map((c) => ({ ref: ["calibre_disjuntor", String(c)] as RefKey, parametro: breakerParam(c) })),
 ];
 
 /** Tabelas onde o botão "Preencher com referência" faz alguma coisa. */

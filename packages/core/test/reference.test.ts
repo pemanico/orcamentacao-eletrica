@@ -67,7 +67,7 @@ describe("Referência RTIEBT", () => {
   it("parâmetros: acrescenta só os que faltam", () => {
     const existing = [row("p", { parametro: "Queda de tensão máx. — iluminação", valor: 3, unidade: "%" }, { table: "parametros" })];
     const plan = planReferenceFill("parametros", existing, reference);
-    assert.equal(plan.inserts.length, 5);
+    assert.equal(plan.inserts.length, 15); // 5 do RTIEBT + resistividade + 9 calibres
     const pot = plan.inserts.find((i) => i.label.includes("mais de 6"))!;
     assert.equal(pot.values.valor, 10.35);
     assert.match(pot.source, /801\.5\.2\.2/);

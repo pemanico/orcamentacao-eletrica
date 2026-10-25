@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-25 · commit `61aa512` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-25 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -57,6 +57,13 @@ confirmar).
   arranque). Botão **Preencher com referência**: pré-visualiza, só células vazias, nunca
   linhas aprovadas, fica em Proposta, acrescenta a fonte. Aviso de linhas da mesma carga
   desalinhadas. Decisão dele: **não** separar especificação por carga do agrupamento C-n.
+- **Calculadora de secções** (`packages/core/src/sizing.ts`, página `#/regras/calculadora`):
+  IB → In (433.2) → k1·k2 → secção (52-C1, mínimo 801.5.8) → ΔU (52O, ρ do CINEL). Calibres e
+  ρ na tabela Parâmetros (só aprovados contam quando há algum; senão resultado "provisório").
+  Exercício do CINEL (termo 4,6 kW, 35 °C, 3 circ., 25 m) refeito com o 52-C1 dá **C20 + 4 mm²**
+  (o material do curso dava 6 mm² por usar a coluna de 3 condutores carregados). Sem
+  verificação de curto-circuito (Icn ≥ Icc máx, Icc mín ≥ Im): falta a impedância da rede.
+  Ainda não ligada aos circuitos do projeto (F2/F3).
 - Achados no RTIEBT que contrariam resumos de IA: fogão mínimo **4 mm²** (801.5.8);
   30 mA obrigatório só em WC, tomadas exteriores ≤ 20 A, piscina, VE e terra > 500 Ω
   (no resto, diferencial ≤ 500 mA — 801.5.4.1/801.5.9; 30 mA em tudo é prática);
@@ -75,7 +82,9 @@ confirmar).
    instalação/k2 por omissão (tubos separados 52-E3 vs mesmo elemento 52-E1; paredes com
    isolamento → método A), 30 mA em todos os circuitos (prática) ou só onde é obrigatório.
    Bomba de calor de AQS: climatização ou termoacumulador? (secção mínima igual, 2,5 mm²).
-   Secção 702 (piscina) ainda por ler.
+   Secção 702 (piscina) ainda por ler. Mostrar ao formador o erro do exercício do
+   termoacumulador (6 vs 4 mm²) e a regra "compartimento > 4 m², sem cozinha e WC" (não está
+   no RTIEBT — de onde vem?). Curva do disjuntor (B/C/D) e Icc: que valores usa para a rede?
 3. **Ele**: cronometrar o piso 0 traçado a partir do DXF. Se > 10 min → gerar paredes
    automaticamente a partir de `arq_corte` + contornos das tramas (proposto, adiado).
 4. Sugerido: tipo próprio "Casa das máquinas da piscina" com defaults próprios (bomba de
@@ -111,7 +120,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 46, servidor 36, e2e 26 — tudo verde.
+  `npm run test:e2e`. Estado dos testes: core 54, servidor 36, e2e 27 — tudo verde.
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo); `typecheck:web` não corre lá (faltam @types). No PC dele
   é `npm install` normal.
