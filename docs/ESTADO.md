@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-25 · commit `bb47ec2` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-25 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -108,10 +108,7 @@ confirmar).
    - todos os circuitos com diferencial, ≤ 500 mA (801.5.4.1, 801.5.9); 30 mA e tipo A em
      tudo é prática (decisão dele);
    - reserva no quadro (20–25 %) é prática, não RTIEBT.
-7. `typecheck:web` falha também no PC dele: `apps/web/tsconfig.json` pede `vite/client`
-   (não instalado — o build é esbuild); sem isso, `import "./styles.css"` não tem tipos; e
-   `EditorPage.tsx:72` devolve `null` num cleanup de `useEffect`. Corrigir (pequeno).
-8. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
+7. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
 
 ## A casa dele (caso de teste)
 
@@ -140,8 +137,8 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 54, servidor 36, e2e 27 — tudo verde.
+  `npm run test:e2e`. Estado dos testes: core 54, servidor 36, e2e 27; typecheck e typecheck:web limpos — tudo verde.
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
-  @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` não corre lá (faltam @types). No PC dele
+  @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele
   é `npm install` normal.

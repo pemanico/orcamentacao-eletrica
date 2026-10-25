@@ -69,7 +69,12 @@ export function EditorPage({ floorId }: { floorId: string }) {
 
   const meta = completeMeta(floor?.sourceMeta ?? null);
   const dxfPlan = useMemo(() => (drawing && meta ? buildDxfPlan(drawing, meta) : null), [drawing, JSON.stringify(meta)]);
-  useEffect(() => () => dxfPlan && URL.revokeObjectURL(dxfPlan.imageUrl), [dxfPlan]);
+  useEffect(
+    () => () => {
+      if (dxfPlan) URL.revokeObjectURL(dxfPlan.imageUrl);
+    },
+    [dxfPlan],
+  );
   const regionLayers = useMemo(() => (drawing && meta ? layersInRegion(drawing, meta.region) : []), [drawing, JSON.stringify(meta?.region)]);
 
   // pisos configurados antes de haver layers "[trama]": atualiza uma vez e grava
