@@ -251,6 +251,22 @@ describe("F1 — planta", () => {
     if (shots) await page.screenshot({ path: join(shots, "regras.png") });
   });
 
+  it("Regras: preencher com referência mostra o que muda e só depois grava", async () => {
+    const c1 = page.locator("tr.rule-row").first();
+    assert.equal(await c1.getByLabel("Carga").inputValue(), "tomadas");
+    assert.equal(await c1.getByLabel("Secção").inputValue(), "");
+    await page.getByRole("button", { name: "Preencher com referência" }).click();
+    const preview = page.getByTestId("fill-preview");
+    await preview.getByText(/secção = 2,5 \(RTIEBT 801\.5\.8/).first().waitFor();
+    assert.equal(await c1.getByLabel("Secção").inputValue(), "", "a pré-visualização não grava");
+    await preview.getByRole("button", { name: "Aplicar" }).click();
+    await page.getByTestId("fill-done").waitFor();
+    assert.equal(await c1.getByLabel("Secção").inputValue(), "2,5");
+    assert.equal(await c1.getByLabel("Disjuntor").inputValue(), "", "disjuntor não vem do RTIEBT");
+    assert.match(await c1.getByLabel("Fonte").inputValue(), /RTIEBT 801\.5\.8/);
+    if (shots) await page.screenshot({ path: join(shots, "regras-referencia.png") });
+  });
+
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {
     await page.locator(".menu").getByRole("link", { name: "Dados" }).click();
     await page.waitForURL(/#\/dados/);

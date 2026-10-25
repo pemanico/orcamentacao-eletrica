@@ -19,7 +19,7 @@ import {
 } from "@orc/core";
 import type { Db, FloorRow, ProjectEventRow, ProjectRow } from "./db.ts";
 import { HttpError, Router, readBody, readJson, sendJson } from "./http.ts";
-import { migrateRules, registerRuleRoutes, seedRules } from "./rules.ts";
+import { backfillLoads, migrateRules, registerRuleRoutes, seedRules } from "./rules.ts";
 
 const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
@@ -130,6 +130,7 @@ export function buildApp(opts: {
   const backupDir = resolve(opts.backupDir ?? join(dataDir, "copias"));
   migrateRules(db);
   if (opts.rulesSeedDir) seedRules(db, opts.rulesSeedDir, log);
+  backfillLoads(db);
 
   const listBackups = () =>
     existsSync(backupDir)
@@ -470,7 +471,7 @@ export function buildApp(opts: {
       return floorDto(getFloor(row.id)!);
     });
 
-  registerRuleRoutes(router, db);
+  registerRuleRoutes(router, db, opts.rulesSeedDir);
 
   const webRoot = opts.webDist && existsSync(opts.webDist) ? resolve(opts.webDist) : null;
 

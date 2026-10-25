@@ -9,6 +9,10 @@ import {
   ROOM_TYPE_CODE,
   ROOM_TYPES,
   approvalBlockers,
+  inferLoad,
+  parseReference,
+  planReferenceFill,
+  REFERENCE_TABLES,
   isBuiltinRoomType,
   slugifyRoomType,
   parseCell,
@@ -155,6 +159,7 @@ export function seedRules(db: Db, seedDir: string, log: (m: string) => void = ()
         values[col.key] = r.ok ? r.value : null;
         if (!r.ok) problems.push(r.error);
       }
+      if (def.columns.some((c) => c.key === "carga") && values.carga === null) values.carga = inferLoad(id, values);
       // a carga inicial nunca aprova: a aprovação é sempre um ato teu, na app
       const state: RuleState = rec.estado === "a_definir" ? "a_definir" : "proposta";
       const notes = [rec.notas ?? "", ...problems].filter(Boolean).join(" · ");
@@ -163,6 +168,26 @@ export function seedRules(db: Db, seedDir: string, log: (m: string) => void = ()
     log(`Regras: carregada a tabela ${id} a partir de ${file}`);
   }
 }
+
+/**
+ * Linhas criadas antes de existir a coluna "carga": deduz a carga quando é óbvia
+ * (tipo iluminação/tomadas, ou "forno", "placa", "VE"… no texto). Corre uma vez por linha
+ * (a chave passa a existir, mesmo que fique vazia) e nunca toca em linhas aprovadas.
+ */
+export function backfillLoads(db: Db) {
+  const rows = db
+    .prepare("SELECT id, table_id, values_json FROM rules WHERE table_id IN ('tipos_circuito', 'equipamentos') AND state != 'aprovada'")
+    .all() as { id: string; table_id: RuleTableId; values_json: string }[];
+  const upd = db.prepare("UPDATE rules SET values_json = ? WHERE id = ?");
+  for (const r of rows) {
+    const v = JSON.parse(r.values_json) as RuleValues;
+    if ("carga" in v) continue;
+    v.carga = inferLoad(r.table_id, v);
+    upd.run(JSON.stringify(v), r.id);
+  }
+}
+
+export const REFERENCE_FILE = "referencia_rtiebt.csv";
 
 const updateInput = z.object({
   values: z.record(z.unknown()).optional(),
@@ -176,10 +201,16 @@ const tableParam = (t: string | undefined): RuleTableId => {
   return t as RuleTableId;
 };
 
-export function registerRuleRoutes(router: Router, db: Db) {
+export function registerRuleRoutes(router: Router, db: Db, seedDir?: string) {
   const get = (id: string) => db.prepare("SELECT * FROM rules WHERE id = ?").get(id) as RuleDbRow | undefined;
   const list = (t: RuleTableId) =>
     (db.prepare("SELECT * FROM rules WHERE table_id = ? ORDER BY position, rowid").all(t) as unknown as RuleDbRow[]).map(toRow);
+  const planFill = (t: RuleTableId) => {
+    if (!REFERENCE_TABLES.includes(t)) throw new HttpError(400, "Esta tabela não tem valores de referência.");
+    const file = seedDir ? join(seedDir, REFERENCE_FILE) : "";
+    if (!file || !existsSync(file)) throw new HttpError(404, `Ficheiro de referência não encontrado (regras/${REFERENCE_FILE}).`);
+    return planReferenceFill(t, list(t), parseReference(readFileSync(file, "utf8")));
+  };
 
   router
     .on("GET", "/api/rules", () =>
@@ -248,6 +279,31 @@ export function registerRuleRoutes(router: Router, db: Db) {
       const r = db.prepare("DELETE FROM rules WHERE id = ? AND table_id = ?").run(params.id!, t);
       if (Number(r.changes) !== 1) throw new HttpError(404, "Regra não encontrada.");
       return { ok: true };
+    })
+    /** Pré-visualização do preenchimento com o ficheiro de referência (não grava nada). */
+    .on("GET", "/api/rules/:table/reference-fill", ({ params }) => planFill(tableParam(params.table)))
+    /** Aplica o preenchimento. O plano é recalculado aqui: nunca se confia no que o cliente viu. */
+    .on("POST", "/api/rules/:table/reference-fill", ({ params }) => {
+      const t = tableParam(params.table);
+      const plan = planFill(t);
+      const update = db.prepare(
+        `UPDATE rules SET values_json = ?, source = ?, state = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+         WHERE id = ? AND state != 'aprovada'`,
+      );
+      const insert = db.prepare(
+        "INSERT INTO rules (id, table_id, position, values_json, state, source, notes) VALUES (?, ?, ?, ?, 'proposta', ?, ?)",
+      );
+      db.exec("BEGIN");
+      try {
+        for (const u of plan.updates) update.run(JSON.stringify(u.values), u.source, u.state, u.id);
+        let { p } = db.prepare("SELECT COALESCE(MAX(position), 0) AS p FROM rules WHERE table_id = ?").get(t) as { p: number };
+        for (const i of plan.inserts) insert.run(newId(), t, (p += 10), JSON.stringify(i.values), i.source, i.notes);
+        db.exec("COMMIT");
+      } catch (e) {
+        db.exec("ROLLBACK");
+        throw e;
+      }
+      return plan;
     })
     .on("GET", "/api/rules/:table/export", ({ params, res }) => {
       const t = tableParam(params.table);

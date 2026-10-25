@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-23 · commit `d8d9050` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-25 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -51,6 +51,17 @@ confirmar).
 - **Projetos**: workflow Levantamento → Orçamento → Enviado → Adjudicado → Em obra →
   Concluído (+ Perdido), arquivar, apagar com confirmação (bloqueado a partir de Adjudicado),
   histórico.
+- **Referência RTIEBT** (`regras/referencia_rtiebt.csv`): valores tirados da Portaria
+  949-A/2006 consolidada (PDF do Ordep, não está no repo), com artigo e página DR. Coluna
+  **Carga** em Tipos de circuito e Equipamentos (deduzida; linhas antigas migradas no
+  arranque). Botão **Preencher com referência**: pré-visualiza, só células vazias, nunca
+  linhas aprovadas, fica em Proposta, acrescenta a fonte. Aviso de linhas da mesma carga
+  desalinhadas. Decisão dele: **não** separar especificação por carga do agrupamento C-n.
+- Achados no RTIEBT que contrariam resumos de IA: fogão mínimo **4 mm²** (801.5.8);
+  30 mA obrigatório só em WC, tomadas exteriores ≤ 20 A, piscina, VE e terra > 500 Ω
+  (no resto, diferencial ≤ 500 mA — 801.5.4.1/801.5.9; 30 mA em tudo é prática);
+  **sem Ks** dentro da habitação no regulamento; 8 pontos por circuito "em regra"
+  (801.5.3); "compartimento" não está definido (potência mínima 801.5.2.2).
 - **Dados**: SQLite em `data/orcamentacao.db`, autosave, cópias de segurança, página Dados.
 
 ## Pendente (por ordem)
@@ -58,8 +69,13 @@ confirmar).
 1. **Ele**: aprovar a tabela "Defaults por divisão" (linhas "A definir": cozinha luz,
    máquina loiça, lavandaria, corredor quantidade, exteriores, sala tomadas/interruptores;
    corredor > 2 portas: inversor ou telerruptor?). Bloqueia a F2.
-2. **Ele (formador)**: horas de mão de obra, preço da hora, valores RTIEBT (secções,
-   disjuntores, diferenciais, potências), secção 702 (piscina).
+2. **Ele (formador)**: horas de mão de obra, preço da hora; e o que o RTIEBT não fixa:
+   disjuntor por tipo de circuito, Ks por tipo de utilização (e sobre que potência se
+   aplica), potência dos equipamentos, cos φ, o que conta como "compartimento", método de
+   instalação/k2 por omissão (tubos separados 52-E3 vs mesmo elemento 52-E1; paredes com
+   isolamento → método A), 30 mA em todos os circuitos (prática) ou só onde é obrigatório.
+   Bomba de calor de AQS: climatização ou termoacumulador? (secção mínima igual, 2,5 mm²).
+   Secção 702 (piscina) ainda por ler.
 3. **Ele**: cronometrar o piso 0 traçado a partir do DXF. Se > 10 min → gerar paredes
    automaticamente a partir de `arq_corte` + contornos das tramas (proposto, adiado).
 4. Sugerido: tipo próprio "Casa das máquinas da piscina" com defaults próprios (bomba de
@@ -95,7 +111,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes em d8d9050: core 40, servidor 34, e2e 25 — tudo verde.
+  `npm run test:e2e`. Estado dos testes: core 46, servidor 36, e2e 26 — tudo verde.
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
-  `/opt/npm-tools/node_modules`; `typecheck:web` não corre lá (faltam @types). No PC dele
+  `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo); `typecheck:web` não corre lá (faltam @types). No PC dele
   é `npm install` normal.

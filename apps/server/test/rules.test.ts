@@ -8,6 +8,7 @@ import type { AddressInfo } from "node:net";
 import { parseCsv } from "@orc/core";
 import { buildApp } from "../src/app.ts";
 import { openDb } from "../src/db.ts";
+import { backfillLoads } from "../src/rules.ts";
 
 const seedDir = fileURLToPath(new URL("../../../regras", import.meta.url));
 const dataDir = mkdtempSync(join(tmpdir(), "orc-rules-"));
@@ -149,6 +150,54 @@ describe("Regras", () => {
     assert.match(del2.body.error, /Moradia X · piso 0: Jogos/);
     db.prepare("DELETE FROM projects WHERE id = 'p1'").run();
     assert.equal((await req("DELETE", `/api/rules/tipos_divisao/${a.body.id}`)).status, 200);
+  });
+
+  it("carga deduzida na carga inicial e nas linhas antigas", async () => {
+    const tc = (await req("GET", "/api/rules/tipos_circuito")).body as { values: Record<string, unknown> }[];
+    const by = (c: string) => tc.find((r) => r.values.codigo === c)!.values.carga;
+    assert.equal(by("C1"), "tomadas");
+    assert.equal(by("C6"), "fogao");
+    assert.equal(by("C9"), "iluminacao");
+    assert.equal(by("C12"), "climatizacao");
+    const eq = (await req("GET", "/api/rules/equipamentos")).body as { values: Record<string, unknown> }[];
+    assert.equal(eq.find((r) => r.values.equipamento === "carregador VE")!.values.carga, "ve");
+
+    // linha criada antes de existir a coluna: sem a chave "carga"
+    db.prepare("INSERT INTO rules (id, table_id, position, values_json, state) VALUES ('old1', 'tipos_circuito', 999, ?, 'proposta')").run(
+      JSON.stringify({ codigo: "C99", tipo: "dedicado", agrupamento: "placa" }),
+    );
+    backfillLoads(db);
+    const old = db.prepare("SELECT values_json FROM rules WHERE id = 'old1'").get() as { values_json: string };
+    assert.equal(JSON.parse(old.values_json).carga, "fogao");
+    db.prepare("DELETE FROM rules WHERE id = 'old1'").run();
+  });
+
+  it("preencher com referência: pré-visualiza sem gravar, aplica só em células vazias, uma vez", async () => {
+    const before = (await req("GET", "/api/rules/tipos_circuito")).body;
+    const preview = await req("GET", "/api/rules/tipos_circuito/reference-fill");
+    assert.equal(preview.status, 200);
+    assert.ok(preview.body.updates.length > 5);
+    assert.deepEqual((await req("GET", "/api/rules/tipos_circuito")).body, before, "a pré-visualização não grava");
+
+    const applied = await req("POST", "/api/rules/tipos_circuito/reference-fill");
+    assert.equal(applied.body.updates.length, preview.body.updates.length);
+    const rows = (await req("GET", "/api/rules/tipos_circuito")).body as { values: Record<string, unknown>; state: string; source: string }[];
+    const c6 = rows.find((r) => r.values.codigo === "C6")!;
+    assert.equal(c6.values.seccao_mm2, 4);
+    assert.equal(c6.values.disjuntor_A, null);
+    assert.equal(c6.state, "proposta");
+    assert.match(c6.source, /^Ordep; RTIEBT 801\.5\.8/);
+    const ve = rows.find((r) => r.values.carga === "ve")!;
+    assert.equal(ve.state, "proposta", "a_definir passa a proposta, nunca a aprovada");
+
+    const again = await req("GET", "/api/rules/tipos_circuito/reference-fill");
+    assert.equal(again.body.updates.length, 0, "nada mais para preencher");
+
+    const params = await req("POST", "/api/rules/parametros/reference-fill");
+    assert.equal(params.body.inserts.length, 6);
+    assert.equal((await req("POST", "/api/rules/parametros/reference-fill")).body.inserts.length, 0);
+
+    assert.equal((await req("GET", "/api/rules/mao_de_obra/reference-fill")).status, 400);
   });
 
   it("tabela desconhecida dá 404", async () => {

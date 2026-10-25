@@ -1,0 +1,62 @@
+﻿grupo;chave;valor;unidade;fonte;notas
+seccao_minima_habitacao;iluminacao;1,5;mm²;RTIEBT 801.5.8, DR p.163;
+seccao_minima_habitacao;tomadas;2,5;mm²;RTIEBT 801.5.8, DR p.163;excepção 1,5 mm² se tomadas comandadas + climatização fixa distinta no compartimento
+seccao_minima_habitacao;termoacumulador;2,5;mm²;RTIEBT 801.5.8, DR p.163;
+seccao_minima_habitacao;maquinas_lavar_secar;2,5;mm²;RTIEBT 801.5.8, DR p.163;roupa, secar, loiça
+seccao_minima_habitacao;fogao;4;mm²;RTIEBT 801.5.8, DR p.163;placa/forno: mínimo 4, não 6 — 6 só se o cálculo o exigir
+seccao_minima_habitacao;climatizacao;2,5;mm²;RTIEBT 801.5.8, DR p.163;AC / bomba de calor
+seccao_minima_geral;potencia_iluminacao_cobre;1,5;mm²;RTIEBT 524.1 quadro 52J, DR p.70;
+circuitos;max_pontos_por_circuito;8;pontos;RTIEBT 801.5.3, DR p.163;"em regra"; tomadas de 16 A no mesmo aparelho = 1 ponto
+circuitos;max_aparelhos_climatizacao_por_circuito;5;aparelhos;RTIEBT 801.5.3, DR p.163;climatização em circuitos distintos dos outros usos
+circuitos;tipo_circuito_final;monofasico;;RTIEBT 801.5.3, DR p.163;"em regra"
+circuitos;condutor_protecao;obrigatorio;;RTIEBT 801.5.6.2, DR p.163;todos os circuitos
+circuitos;condutores_monofasico;3;condutores;RTIEBT 801.5.3 e 801.5.6.2, DR p.163;fase + neutro + PE (monofásico com condutor de proteção)
+circuitos;ve_pontos_por_circuito;1;pontos;RTIEBT 722.311;cada VE num circuito dedicado
+circuitos;protecao_sobreintensidades;disjuntor;;RTIEBT 801.5.5.1, DR p.163;
+circuitos;ve_circuito_dedicado;sim;;RTIEBT 722.311;um circuito e protecção individual por ponto de ligação (722.533.101)
+potencia_minima_mono;1_compartimento;3,45;kVA;RTIEBT 801.5.2.2, DR p.163;15 A
+potencia_minima_mono;2_a_6_compartimentos;6,90;kVA;RTIEBT 801.5.2.2, DR p.163;30 A
+potencia_minima_mono;mais_de_6_compartimentos;10,35;kVA;RTIEBT 801.5.2.2, DR p.163;45 A — "compartimento" não definido no texto
+simultaneidade;habitacao_interior;;;RTIEBT 311.2 e 801.1.1.1;o regulamento NÃO fixa valores: "de acordo com as necessidades" — valores são prática de projeto
+simultaneidade;ve;1,00;;RTIEBT 722.311;<1 só com controlador de carga e vários pontos
+diferencial;protecao_incendio_habitacao;500;mA;RTIEBT 801.5.4.1, DR p.163;IΔn ≤ 0,5 A
+diferencial;todos_circuitos;obrigatorio;;RTIEBT 801.5.9, DR p.164;disjuntor de entrada diferencial OU diferenciais por circuito/grupo
+diferencial;casas_banho;30;mA;RTIEBT 701 (701.55.02 e seg.);
+diferencial;tomadas_exterior_ate_20A;30;mA;RTIEBT 471.2.3;
+diferencial;piscinas;30;mA;RTIEBT 702;confirmar volumes na 702
+diferencial;ve;30 mA tipo A (mín.);;RTIEBT 722.531.2.101;corta todos os activos incluindo neutro
+diferencial;terra_acima_500_ohm;30;mA;RTIEBT 531.2.6.2;
+queda_tensao;iluminacao_rede_publica;3;%;RTIEBT 525 quadro 52O, DR p.71;da origem ao ponto de utilização
+queda_tensao;outros_usos_rede_publica;5;%;RTIEBT 525 quadro 52O, DR p.71;
+metodo_instalacao;tubo_embebido_alvenaria;B;;RTIEBT quadro 52H ref.5, DR p.62;caso típico em habitação
+metodo_instalacao;tubo_embebido_isolante_termico;A;;RTIEBT quadro 52H ref.1, DR p.61;ex.: parede com isolamento térmico (ETICS/pladur com lã)
+iz_pvc_cu_2carregados_B;1,5;17,5;A;RTIEBT quadro 52-C1, DR p.98;30 °C
+iz_pvc_cu_2carregados_B;2,5;24;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_B;4;32;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_B;6;41;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_B;10;57;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_B;16;76;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_A;1,5;14,5;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_A;2,5;19,5;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_A;4;26;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_A;6;34;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_A;10;46;A;RTIEBT quadro 52-C1, DR p.98;
+iz_pvc_cu_2carregados_A;16;61;A;RTIEBT quadro 52-C1, DR p.98;
+k1_temperatura_pvc;25;1,06;;RTIEBT quadro 52-D1, DR p.110;
+k1_temperatura_pvc;30;1,00;;RTIEBT quadro 52-D1, DR p.110;
+k1_temperatura_pvc;35;0,94;;RTIEBT quadro 52-D1, DR p.110;
+k1_temperatura_pvc;40;0,87;;RTIEBT quadro 52-D1, DR p.110;
+k2_agrupamento_embebidos;1;1,00;;RTIEBT quadro 52-E1 ref.1, DR p.111;circuitos no mesmo tubo/elemento
+k2_agrupamento_embebidos;2;0,80;;RTIEBT quadro 52-E1 ref.1, DR p.111;
+k2_agrupamento_embebidos;3;0,70;;RTIEBT quadro 52-E1 ref.1, DR p.111;
+k2_agrupamento_embebidos;4;0,65;;RTIEBT quadro 52-E1 ref.1, DR p.111;
+k2_agrupamento_embebidos;5;0,60;;RTIEBT quadro 52-E1 ref.1, DR p.111;
+k2_agrupamento_embebidos;6;0,57;;RTIEBT quadro 52-E1 ref.1, DR p.111;
+k2_tubos_embebidos_horizontal;1;1,00;;RTIEBT quadro 52-E3, DR p.111;tubos lado a lado embebidos, 1 fila vertical
+k2_tubos_embebidos_horizontal;2;0,87;;RTIEBT quadro 52-E3, DR p.111;
+k2_tubos_embebidos_horizontal;3;0,77;;RTIEBT quadro 52-E3, DR p.111;
+k2_tubos_embebidos_horizontal;4;0,72;;RTIEBT quadro 52-E3, DR p.111;
+k2_tubos_embebidos_horizontal;5;0,68;;RTIEBT quadro 52-E3, DR p.111;
+k2_tubos_embebidos_horizontal;6;0,65;;RTIEBT quadro 52-E3, DR p.111;
+calibres_disjuntor;normalizados;6, 10, 16, 20, 25, 32, 40, 50, 63;A;série comercial (não RTIEBT);confirmar com formador
+cos_phi;por_carga;;;não RTIEBT;falta: perguntar ao formador

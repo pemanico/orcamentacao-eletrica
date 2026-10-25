@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CIRCUIT_KINDS,
+  LOAD_LABEL,
+  REFERENCE_TABLES,
+  loadInconsistencies,
+  type LoadKind,
+  type ReferenceFillPlan,
   RULE_STATES,
   RULE_STATE_LABEL,
   RULE_TABLES,
@@ -19,6 +24,7 @@ import { useRoomTypes } from "../roomTypes";
 
 const optionLabel = (col: ColumnDef, v: string, catalog: RoomTypeInfo[]) => {
   if (col.key === "divisao" || col.key === "defaults_como") return roomTypeShort(catalog, v);
+  if (col.key === "carga") return LOAD_LABEL[v as LoadKind] ?? v;
   if ((CIRCUIT_KINDS as readonly string[]).includes(v)) return v === "iluminacao" ? "iluminação" : v;
   return v;
 };
@@ -33,6 +39,32 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   const [onlyPending, setOnlyPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { catalog } = useRoomTypes();
+  const [fillPlan, setFillPlan] = useState<ReferenceFillPlan | null>(null);
+  const [fillDone, setFillDone] = useState<string | null>(null);
+
+  async function previewFill() {
+    setError(null);
+    setFillDone(null);
+    try {
+      setFillPlan(await api.referencePreview(tableId));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function applyFill() {
+    setError(null);
+    try {
+      const done = await api.referenceApply(tableId);
+      setFillPlan(null);
+      const n = done.updates.length + done.inserts.length;
+      setFillDone(n ? `${n} linha(s) preenchida(s), em Proposta. Revê e aprova uma a uma.` : "Nada para preencher.");
+      setRows(await api.listRules(tableId));
+      void refreshSummary();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
 
   const refreshSummary = () =>
     api.ruleSummary().then((s) => {
@@ -42,6 +74,8 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
 
   useEffect(() => {
     setRows(null);
+    setFillPlan(null);
+    setFillDone(null);
     api.listRules(tableId).then(setRows, (e: Error) => setError(e.message));
     void refreshSummary();
   }, [tableId]);
@@ -117,6 +151,11 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
                 <input type="checkbox" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} />
                 Só por aprovar
               </label>
+              {REFERENCE_TABLES.includes(tableId) && (
+                <button onClick={() => void previewFill()} title="Preenche células vazias com os valores do RTIEBT (regras/referencia_rtiebt.csv)">
+                  Preencher com referência
+                </button>
+              )}
               <a className="button" href={`/api/rules/${tableId}/export`} download>
                 Exportar CSV
               </a>
@@ -140,6 +179,19 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
               . Sem linhas aprovadas, a F2 não propõe pontos nessas divisões.
             </p>
           )}
+          {fillPlan && <FillPreview plan={fillPlan} onApply={() => void applyFill()} onCancel={() => setFillPlan(null)} />}
+          {fillDone && (
+            <p className="muted small" data-testid="fill-done">
+              {fillDone}
+            </p>
+          )}
+          {tableId === "tipos_circuito" &&
+            rows &&
+            loadInconsistencies(rows).map((m) => (
+              <p key={m} className="warn small" data-testid="carga-desalinhada">
+                Valores desalinhados — {m}
+              </p>
+            ))}
           {error && <p className="error">{error}</p>}
           {rows === null ? (
             <p className="muted">A carregar…</p>
@@ -179,6 +231,52 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
         </section>
       </div>
     </Shell>
+  );
+}
+
+function FillPreview({ plan, onApply, onCancel }: { plan: ReferenceFillPlan; onApply: () => void; onCancel: () => void }) {
+  const empty = plan.updates.length === 0 && plan.inserts.length === 0;
+  return (
+    <div className="card fill-preview" data-testid="fill-preview">
+      <h3>Preencher com referência</h3>
+      <p className="muted small">
+        Só células vazias; linhas aprovadas não são tocadas; tudo fica em <strong>Proposta</strong> e a fonte (artigo RTIEBT) é acrescentada.
+        O que o regulamento não fixa (disjuntor, potência dos aparelhos, simultaneidade na habitação) fica por preencher.
+      </p>
+      {empty && <p>Nada para preencher.</p>}
+      {plan.updates.length > 0 && (
+        <ul className="small">
+          {plan.updates.map((u) => (
+            <li key={u.id}>
+              <strong>{u.label}</strong>:{" "}
+              {u.changes.map((c) => `${c.label.toLowerCase()} = ${String(c.value).replace(".", ",")} (${c.source})`).join("; ")}
+            </li>
+          ))}
+        </ul>
+      )}
+      {plan.inserts.length > 0 && (
+        <ul className="small">
+          {plan.inserts.map((i) => (
+            <li key={i.label}>
+              <strong>novo:</strong> {i.label} = {String(i.values.valor).replace(".", ",")} {i.values.unidade ?? ""} ({i.source})
+            </li>
+          ))}
+        </ul>
+      )}
+      {plan.skipped.length > 0 && (
+        <p className="muted small">
+          Sem carga indicada (escolhe-a na coluna Carga): {plan.skipped.map((s) => s.label).join(", ")}.
+        </p>
+      )}
+      <div className="rules-actions">
+        <button onClick={onCancel}>Cancelar</button>
+        {!empty && (
+          <button className="primary" onClick={onApply}>
+            Aplicar
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

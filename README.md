@@ -147,6 +147,14 @@ equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava
 - Alterar uma regra aprovada retira-lhe a aprovação.
 - O número no menu **Regras** é o total por aprovar.
 - **Exportar CSV** abre no Excel, para levar ao formador.
+- **Preencher com referência** (Tipos de circuito, Equipamentos, Parâmetros): mostra primeiro o
+  que vai mudar e só grava quando carregas em *Aplicar*. Usa `regras/referencia_rtiebt.csv`
+  (valores do RTIEBT com artigo e página). Só preenche células vazias, nunca toca em linhas
+  aprovadas, deixa tudo em **Proposta** e acrescenta o artigo à fonte. Precisa da coluna
+  **Carga** (iluminação, tomadas, máquinas, fogão, climatização, VE…), deduzida
+  automaticamente quando é óbvia. O disjuntor fica por preencher: o RTIEBT não o fixa.
+- Em Tipos de circuito, linhas com a mesma carga e secção, disjuntor ou diferencial
+  diferentes mostram um aviso (ex.: C1 com 2,5 mm² e C5 com 4 mm²).
 
 ### Tipos de divisão
 

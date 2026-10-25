@@ -48,6 +48,23 @@ export type RuleTableId = (typeof RULE_TABLE_IDS)[number];
 
 export const CIRCUIT_KINDS = ["tomadas", "iluminacao", "dedicado"] as const;
 
+/**
+ * Natureza da carga, nas categorias do RTIEBT 801.5.8 (+ VE, secção 722). É a chave que
+ * liga uma linha de regras aos valores do ficheiro de referência (regras/referencia_rtiebt.csv).
+ */
+export const LOAD_KINDS = ["iluminacao", "tomadas", "maquinas_lavar", "termoacumulador", "fogao", "climatizacao", "ve", "outro"] as const;
+export type LoadKind = (typeof LOAD_KINDS)[number];
+export const LOAD_LABEL: Record<LoadKind, string> = {
+  iluminacao: "iluminação",
+  tomadas: "tomadas",
+  maquinas_lavar: "máq. lavar/secar",
+  termoacumulador: "termoacumulador",
+  fogao: "fogão (placa/forno)",
+  climatizacao: "climatização (AC/BC)",
+  ve: "carregador VE",
+  outro: "outro",
+};
+
 export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
   tipos_divisao: {
     id: "tipos_divisao",
@@ -80,6 +97,7 @@ export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
     columns: [
       { key: "codigo", label: "Código", kind: "text", required: true, width: 80 },
       { key: "tipo", label: "Tipo", kind: "enum", options: CIRCUIT_KINDS, required: true, width: 110 },
+      { key: "carga", label: "Carga", kind: "enum", options: LOAD_KINDS, width: 160 },
       { key: "agrupamento", label: "Agrupamento", kind: "text", required: true, width: 210 },
       { key: "seccao_mm2", label: "Secção", kind: "number", unit: "mm²", required: true, min: 0.5, max: 50, width: 80 },
       { key: "disjuntor_A", label: "Disjuntor", kind: "number", unit: "A", required: true, min: 1, max: 125, width: 85 },
@@ -95,6 +113,7 @@ export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
     requiresSource: true,
     columns: [
       { key: "equipamento", label: "Equipamento", kind: "text", required: true, width: 190 },
+      { key: "carga", label: "Carga", kind: "enum", options: LOAD_KINDS, width: 160 },
       { key: "potencia_W", label: "Potência", kind: "number", unit: "W", required: true, min: 0, max: 30000, width: 100 },
       { key: "coef_simultaneidade", label: "Simultaneidade", kind: "number", required: true, min: 0, max: 1, width: 110 },
     ],
