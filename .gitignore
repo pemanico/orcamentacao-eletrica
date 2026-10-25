@@ -6,3 +6,6 @@ data/
 
 # exportações de regras feitas na app (podem ter valores comerciais)
 regras-export*.csv
+
+# saída do /graphify (grafo local do repositório)
+graphify-out/
