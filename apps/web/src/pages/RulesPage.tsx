@@ -32,6 +32,13 @@ const optionLabel = (col: ColumnDef, v: string, catalog: RoomTypeInfo[]) => {
   return v;
 };
 
+/** Minúsculas sem acentos, para pesquisar "cozinha" e encontrar "Cozinha" ou "cozínha". */
+const fold = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
 const show = (v: string | number | null | undefined) =>
   v === null || v === undefined ? "" : typeof v === "number" ? String(v).replace(".", ",") : v;
 
@@ -40,6 +47,8 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   const [rows, setRows] = useState<RuleRow[] | null>(null);
   const [summary, setSummary] = useState<Record<string, { total: number; pending: number }>>({});
   const [onlyPending, setOnlyPending] = useState(false);
+  const [search, setSearch] = useState("");
+  const [roomFilter, setRoomFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { catalog } = useRoomTypes();
   const [fillPlan, setFillPlan] = useState<ReferenceFillPlan | null>(null);
@@ -115,11 +124,30 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
     setSelected(new Set());
     setConfirmBulk(false);
     setBulkResult(null);
+    setSearch("");
+    setRoomFilter("");
     api.listRules(tableId).then(setRows, (e: Error) => setError(e.message));
     void refreshSummary();
   }, [tableId]);
 
-  const visible = useMemo(() => (rows ?? []).filter((r) => !onlyPending || r.state !== "aprovada"), [rows, onlyPending]);
+  const visible = useMemo(() => {
+    const q = fold(search.trim());
+    return (rows ?? []).filter((r) => {
+      if (onlyPending && r.state === "aprovada") return false;
+      if (roomFilter && r.values.divisao !== roomFilter) return false;
+      if (!q) return true;
+      const text = [
+        ...def.columns.map((c) => (c.key === "divisao" && typeof r.values.divisao === "string" ? `${r.values.divisao} ${roomTypeShort(catalog, r.values.divisao)}` : show(r.values[c.key]))),
+        r.source,
+        r.notes,
+      ].join(" ");
+      return fold(text).includes(q);
+    });
+  }, [rows, onlyPending, search, roomFilter, def, catalog]);
+  const roomsInTable = useMemo(
+    () => (tableId === "defaults_divisao" ? [...new Set((rows ?? []).map((r) => r.values.divisao).filter((d): d is string => typeof d === "string"))] : []),
+    [rows, tableId],
+  );
   const selectable = visible.filter((r) => r.state !== "aprovada");
   const allSelected = selectable.length > 0 && selectable.every((r) => selected.has(r.id));
 
@@ -189,6 +217,34 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
               {def.commercial && <p className="muted small">Valores comerciais: ficam só na tua base de dados local, nunca no GitHub.</p>}
             </div>
             <div className="rules-actions">
+              <input
+                type="search"
+                className="rules-search"
+                aria-label="Pesquisar nas regras"
+                placeholder="Pesquisar…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setConfirmBulk(false);
+                }}
+              />
+              {tableId === "defaults_divisao" && (
+                <select
+                  aria-label="Filtrar por divisão"
+                  value={roomFilter}
+                  onChange={(e) => {
+                    setRoomFilter(e.target.value);
+                    setConfirmBulk(false);
+                  }}
+                >
+                  <option value="">Todas as divisões</option>
+                  {roomsInTable.map((d) => (
+                    <option key={d} value={d}>
+                      {roomTypeShort(catalog, d)}
+                    </option>
+                  ))}
+                </select>
+              )}
               <label className="check">
                 <input type="checkbox" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} />
                 Só por aprovar
@@ -263,7 +319,7 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
           {rows === null ? (
             <p className="muted">A carregar…</p>
           ) : (
-            <div className="grid-scroll">
+            <div className="grid-scroll rules-table-scroll">
               <table className="table rules-table">
                 <thead>
                   <tr>
@@ -312,7 +368,7 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
                   {visible.length === 0 && (
                     <tr>
                       <td colSpan={def.columns.length + 5} className="muted">
-                        {onlyPending ? "Tudo aprovado nesta tabela." : "Sem linhas."}
+                        {search || roomFilter ? "Nenhuma linha corresponde ao filtro." : onlyPending ? "Tudo aprovado nesta tabela." : "Sem linhas."}
                       </td>
                     </tr>
                   )}

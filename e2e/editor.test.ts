@@ -304,6 +304,29 @@ describe("F1 — planta", () => {
     if (shots) await page.screenshot({ path: join(shots, "aprovacao-bloco.png") });
   });
 
+  it("Regras: pesquisa e filtro por divisão; a seleção em bloco só apanha o que está visível", async () => {
+    await page.getByLabel("Só por aprovar").uncheck();
+    await page.getByLabel("Pesquisar nas regras").fill("estore");
+    await page.getByText("Nenhuma linha corresponde").waitFor({ state: "detached" });
+    const estores = page.locator("tr.rule-row");
+    assert.equal(await estores.count(), 4);
+    for (const el of await estores.getByLabel("Elemento").all()) assert.match(await el.inputValue(), /estore/);
+
+    await page.getByLabel("Pesquisar nas regras").fill("");
+    await page.getByLabel("Filtrar por divisão").selectOption({ label: "Cozinha" });
+    const divs = await page.locator("tr.rule-row").getByLabel("Divisão").all();
+    assert.ok(divs.length >= 8);
+    for (const d of divs) assert.equal(await d.inputValue(), "cozinha");
+
+    // só a cozinha por aprovar: a caixa do cabeçalho seleciona apenas essas
+    await page.getByLabel("Só por aprovar").check();
+    await page.getByLabel("Selecionar todas as linhas por aprovar visíveis").check();
+    const n = await page.locator("tr.rule-row").count();
+    await page.getByTestId("bulk-bar").getByText(`${n} selecionada(s)`, { exact: true }).waitFor();
+    await page.getByTestId("bulk-bar").getByRole("button", { name: "Limpar seleção" }).click();
+    await page.getByLabel("Filtrar por divisão").selectOption("");
+  });
+
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {
     await page.locator(".menu").getByRole("link", { name: "Dados" }).click();
     await page.waitForURL(/#\/dados/);
