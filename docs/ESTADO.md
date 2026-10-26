@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-26 · commit `ef6ec67` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-26 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -67,6 +67,14 @@ confirmar).
 - **Defaults "por divisão / por m² / por m"** (decisão dele, opção b): colunas Por, Cada, Mín.
   em Defaults por divisão; `core/defaults.ts` (`defaultQuantity`, `roomLengthM`) para a F2.
   Linhas antigas migradas para "por divisão".
+- **Aprovação em bloco** nas Regras (pedido dele): caixas por linha + cabeçalho (visíveis por
+  aprovar), confirmação em dois passos, `POST /api/rules/:t/approve` aplica os mesmos bloqueios
+  da aprovação individual e devolve as recusadas com motivo.
+- **BD dele preenchida (2026-10-26)**, com cópia `data/copias/copia-20261026-215454-antes-defaults`:
+  9 quantidades em falta (tabela aceite), hall/arrumos/closet/sala das máquinas, estores
+  (1 motor + 1 comando por janela) em 11 tipos — "todas as janelas levam estores; portas de
+  sacada desenham-se como janela" (decisão dele), linha "estores" em Tipos de circuito. 58
+  defaults, tudo em Proposta; ele aprova (em bloco).
 - **Estores elétricos**: base "por janela" nos defaults (`windowsInRoom`: janelas no contorno
   da divisão, tolerância = espessura da parede + 10 cm); elementos `estore_motor` e
   `interruptor_estore` (seed: quarto e sala, 1 por janela); tipo e carga de circuito
@@ -89,12 +97,8 @@ confirmar).
 
 ## Pendente (por ordem)
 
-1. **Ele** (bloqueia a F2): na BD dele (verificado 2026-10-25) nada está aprovado. Falta:
-   aprovar as 19 linhas com valor; dar quantidade às 9 vazias (sala tomadas/interruptores,
-   corredor luz, cozinha luz e MLL, lavandaria MLR/secar e luz, garagem luz, exterior luz),
-   agora podendo usar "por m²/m"; criar defaults para tipos usados na casa sem linhas:
-   **hall (4×)**, escritório (2×, conta como quarto?), arrumos; closet e sala das máquinas
-   (linhas novas do seed não entram numa BD já carregada). Também os estores (quarto, sala…).
+1. **Ele** (bloqueia a F2): `git pull` e aprovar os 58 defaults (em bloco). Escritório herda
+   os do quarto (inclui 3 comutados — rever se quiser linhas próprias). Closet: sensor de porta?
 2. **Ele (formador)**: horas de mão de obra, preço da hora; e o que o RTIEBT não fixa:
    disjuntor por tipo de circuito, Ks por tipo de utilização (e sobre que potência se
    aplica), potência dos equipamentos, cos φ, o que conta como "compartimento", método de

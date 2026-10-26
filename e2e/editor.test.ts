@@ -288,6 +288,22 @@ describe("F1 — planta", () => {
     if (shots) await page.screenshot({ path: join(shots, "calculadora.png") });
   });
 
+  it("Regras: aprovação em bloco pede confirmação e explica o que ficou de fora", async () => {
+    await page.locator(".tabs").getByRole("link", { name: /Defaults por divisão/ }).click();
+    await page.locator(".crumbs").getByText("Defaults por divisão").waitFor();
+    await page.getByLabel("Só por aprovar").check();
+    await page.getByLabel("Selecionar todas as linhas por aprovar visíveis").check();
+    const bar = page.getByTestId("bulk-bar");
+    await bar.getByRole("button", { name: /^Aprovar \d+ selecionada/ }).click();
+    await bar.getByRole("button", { name: /Confirmar: aprovar/ }).click();
+    const result = page.getByTestId("bulk-result");
+    await result.getByText(/aprovada\(s\)\. Ficaram por aprovar \d+: .*falta qtd/).waitFor();
+    // ficam só as linhas sem quantidade
+    const left = await page.locator("tr.rule-row").count();
+    assert.ok(left > 0 && left < 15, `esperava poucas linhas por aprovar, há ${left}`);
+    if (shots) await page.screenshot({ path: join(shots, "aprovacao-bloco.png") });
+  });
+
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {
     await page.locator(".menu").getByRole("link", { name: "Dados" }).click();
     await page.waitForURL(/#\/dados/);

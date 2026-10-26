@@ -260,6 +260,44 @@ export function registerRuleRoutes(router: Router, db: Db, seedDir?: string) {
      * Alterar valores ou fonte de uma linha aprovada retira-lhe a aprovação (volta a
      * "proposta"): uma regra aprovada nunca muda sem nova aprovação.
      */
+    /**
+     * Aprovação em bloco das linhas indicadas. Cada linha passa pelas mesmas regras da
+     * aprovação individual (campos obrigatórios, fonte nas tabelas técnicas): as que não
+     * cumprem ficam como estavam e são devolvidas com o motivo.
+     */
+    .on("POST", "/api/rules/:table/approve", async ({ req, params }) => {
+      const t = tableParam(params.table);
+      const { ids } = z.object({ ids: z.array(z.string()).min(1).max(1000) }).parse(await readJson(req));
+      const approved: string[] = [];
+      const skipped: { id: string; blockers: string[] }[] = [];
+      const upd = db.prepare(
+        `UPDATE rules SET state = 'aprovada', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+           approved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
+      );
+      db.exec("BEGIN");
+      try {
+        for (const id of ids) {
+          const row = get(id);
+          if (!row || row.table_id !== t) {
+            skipped.push({ id, blockers: ["linha não encontrada"] });
+            continue;
+          }
+          if (row.state === "aprovada") continue;
+          const r = toRow(row);
+          const blockers = approvalBlockers(RULE_TABLES[t], r);
+          if (blockers.length) skipped.push({ id, blockers });
+          else {
+            upd.run(id);
+            approved.push(id);
+          }
+        }
+        db.exec("COMMIT");
+      } catch (e) {
+        db.exec("ROLLBACK");
+        throw e;
+      }
+      return { approved, skipped };
+    })
     .on("PUT", "/api/rules/:table/:id", async ({ req, params }) => {
       const t = tableParam(params.table);
       const row = get(params.id!);

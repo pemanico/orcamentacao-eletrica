@@ -43,6 +43,39 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   const [error, setError] = useState<string | null>(null);
   const { catalog } = useRoomTypes();
   const [fillPlan, setFillPlan] = useState<ReferenceFillPlan | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+
+  const toggleSelected = (id: string, on: boolean) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+
+  async function approveSelected() {
+    setError(null);
+    setConfirmBulk(false);
+    try {
+      const r = await api.approveRules(tableId, [...selected]);
+      const fresh = await api.listRules(tableId);
+      setRows(fresh);
+      setSelected(new Set());
+      const label = (id: string) => {
+        const row = fresh.find((x) => x.id === id);
+        return row ? def.columns.slice(0, 2).map((c) => show(row.values[c.key])).filter(Boolean).join(" · ") : id;
+      };
+      setBulkResult(
+        `${r.approved.length} aprovada(s).` +
+          (r.skipped.length ? ` Ficaram por aprovar ${r.skipped.length}: ${r.skipped.map((x) => `${label(x.id)} (${x.blockers.join(", ")})`).join("; ")}.` : ""),
+      );
+      void refreshSummary();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   const [fillDone, setFillDone] = useState<string | null>(null);
 
   async function previewFill() {
@@ -79,11 +112,16 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
     setRows(null);
     setFillPlan(null);
     setFillDone(null);
+    setSelected(new Set());
+    setConfirmBulk(false);
+    setBulkResult(null);
     api.listRules(tableId).then(setRows, (e: Error) => setError(e.message));
     void refreshSummary();
   }, [tableId]);
 
   const visible = useMemo(() => (rows ?? []).filter((r) => !onlyPending || r.state !== "aprovada"), [rows, onlyPending]);
+  const selectable = visible.filter((r) => r.state !== "aprovada");
+  const allSelected = selectable.length > 0 && selectable.every((r) => selected.has(r.id));
 
   const replace = (row: RuleRow) => {
     setRows((rs) => rs?.map((r) => (r.id === row.id ? row : r)) ?? rs);
@@ -196,6 +234,31 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
                 Valores desalinhados — {m}
               </p>
             ))}
+          {selected.size > 0 && (
+            <div className="bulk-bar" data-testid="bulk-bar">
+              <span>{selected.size} selecionada(s)</span>
+              {confirmBulk ? (
+                <>
+                  <button className="primary" onClick={() => void approveSelected()}>
+                    Confirmar: aprovar {selected.size} sem rever uma a uma
+                  </button>
+                  <button onClick={() => setConfirmBulk(false)}>Cancelar</button>
+                </>
+              ) : (
+                <>
+                  <button className="primary" onClick={() => setConfirmBulk(true)}>
+                    Aprovar {selected.size} selecionada(s)
+                  </button>
+                  <button onClick={() => setSelected(new Set())}>Limpar seleção</button>
+                </>
+              )}
+            </div>
+          )}
+          {bulkResult && (
+            <p className="muted small" data-testid="bulk-result">
+              {bulkResult}
+            </p>
+          )}
           {error && <p className="error">{error}</p>}
           {rows === null ? (
             <p className="muted">A carregar…</p>
@@ -204,6 +267,19 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
               <table className="table rules-table">
                 <thead>
                   <tr>
+                    <th className="sel-col">
+                      <input
+                        type="checkbox"
+                        aria-label="Selecionar todas as linhas por aprovar visíveis"
+                        title="Seleciona as linhas visíveis que não estão aprovadas"
+                        checked={allSelected}
+                        disabled={selectable.length === 0}
+                        onChange={(e) => {
+                          setConfirmBulk(false);
+                          setSelected(e.target.checked ? new Set(selectable.map((r) => r.id)) : new Set());
+                        }}
+                      />
+                    </th>
                     {def.columns.map((c) => (
                       <th key={c.key} style={{ minWidth: c.width }}>
                         {c.label}
@@ -219,11 +295,23 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
                 </thead>
                 <tbody>
                   {visible.map((r) => (
-                    <RuleRowEditor key={r.id} tableId={tableId} row={r} catalog={catalog} onSaved={replace} onDelete={() => removeRow(r.id)} />
+                    <RuleRowEditor
+                      key={r.id}
+                      tableId={tableId}
+                      row={r}
+                      catalog={catalog}
+                      onSaved={replace}
+                      onDelete={() => removeRow(r.id)}
+                      selected={selected.has(r.id)}
+                      onSelect={(on) => {
+                        setConfirmBulk(false);
+                        toggleSelected(r.id, on);
+                      }}
+                    />
                   ))}
                   {visible.length === 0 && (
                     <tr>
-                      <td colSpan={def.columns.length + 4} className="muted">
+                      <td colSpan={def.columns.length + 5} className="muted">
                         {onlyPending ? "Tudo aprovado nesta tabela." : "Sem linhas."}
                       </td>
                     </tr>
@@ -290,12 +378,16 @@ function RuleRowEditor({
   catalog,
   onSaved,
   onDelete,
+  selected,
+  onSelect,
 }: {
   tableId: RuleTableId;
   row: RuleRow;
   catalog: RoomTypeInfo[];
   onSaved: (r: RuleRow) => void;
   onDelete: () => void;
+  selected: boolean;
+  onSelect: (on: boolean) => void;
 }) {
   const def = RULE_TABLES[tableId];
   const [error, setError] = useState<string | null>(null);
@@ -317,6 +409,15 @@ function RuleRowEditor({
   return (
     <>
       <tr className={`rule-row state-${row.state} ${saving ? "saving" : ""}`}>
+        <td className="sel-col">
+          <input
+            type="checkbox"
+            aria-label="Selecionar linha"
+            checked={selected}
+            disabled={row.state === "aprovada"}
+            onChange={(e) => onSelect(e.target.checked)}
+          />
+        </td>
         {def.columns.map((c) => (
           <td key={c.key}>
             {c.kind === "enum" ? (
@@ -371,7 +472,7 @@ function RuleRowEditor({
       </tr>
       {(error || (row.state !== "aprovada" && blockers.length > 0 && row.state === "proposta")) && (
         <tr className="rule-msg">
-          <td colSpan={def.columns.length + 4} className={error ? "error small" : "muted small"}>
+          <td colSpan={def.columns.length + 5} className={error ? "error small" : "muted small"}>
             {error ?? `Para aprovar: ${blockers.join(", ")}.`}
           </td>
         </tr>

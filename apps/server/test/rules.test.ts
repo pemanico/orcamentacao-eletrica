@@ -225,6 +225,31 @@ describe("Regras", () => {
     await req("DELETE", `/api/rules/defaults_divisao/${r.body.id}`);
   });
 
+  it("aprovação em bloco: aprova as que cumprem, devolve as outras com o motivo", async () => {
+    const rows = (await req("GET", "/api/rules/defaults_divisao")).body as { id: string; state: string; values: Record<string, unknown> }[];
+    const pending = rows.filter((r) => r.state !== "aprovada");
+    const semQtd = pending.filter((r) => r.values.quantidade === null);
+    assert.ok(semQtd.length > 0, "a carga inicial tem linhas sem quantidade");
+    const r = await req("POST", "/api/rules/defaults_divisao/approve", { ids: pending.map((x) => x.id) });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.approved.length, pending.length - semQtd.length);
+    assert.equal(r.body.skipped.length, semQtd.length);
+    assert.match(r.body.skipped[0].blockers.join(), /falta qtd/);
+    const after = (await req("GET", "/api/rules/defaults_divisao")).body as { state: string; approvedAt: string | null }[];
+    assert.equal(after.filter((x) => x.state === "aprovada").length, pending.length - semQtd.length + (rows.length - pending.length));
+    assert.ok(after.filter((x) => x.state === "aprovada").every((x) => x.approvedAt));
+
+    // tabela técnica sem fonte: nada aprovado
+    const tc = (await req("GET", "/api/rules/tipos_circuito")).body as { id: string; source: string }[];
+    const semFonte = tc.filter((x) => !x.source).map((x) => x.id);
+    const r2 = await req("POST", "/api/rules/tipos_circuito/approve", { ids: semFonte });
+    assert.equal(r2.body.approved.length, 0);
+
+    // ids de outra tabela não passam
+    const r3 = await req("POST", "/api/rules/equipamentos/approve", { ids: [tc[0]!.id] });
+    assert.deepEqual(r3.body.skipped[0].blockers, ["linha não encontrada"]);
+  });
+
   it("tabela desconhecida dá 404", async () => {
     assert.equal((await req("GET", "/api/rules/inventada")).status, 404);
   });

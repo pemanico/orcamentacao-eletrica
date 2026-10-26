@@ -144,6 +144,8 @@ export const api = {
     call<RuleRow>(`/api/rules/${t}`, json("POST", { values, state })),
   updateRule: (t: RuleTableId, id: string, patch: { values?: Record<string, string | null>; state?: RuleState; source?: string; notes?: string }) =>
     call<RuleRow>(`/api/rules/${t}/${id}`, json("PUT", patch)),
+  approveRules: (t: RuleTableId, ids: string[]) =>
+    call<{ approved: string[]; skipped: { id: string; blockers: string[] }[] }>(`/api/rules/${t}/approve`, json("POST", { ids })),
   deleteRule: (t: RuleTableId, id: string) => call<{ ok: true }>(`/api/rules/${t}/${id}`, { method: "DELETE" }),
   reference: () => call<ReferenceRow[]>("/api/reference"),
   referencePreview: (t: RuleTableId) => call<ReferenceFillPlan>(`/api/rules/${t}/reference-fill`),

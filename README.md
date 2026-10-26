@@ -142,6 +142,9 @@ Menu **Regras**: seis tabelas (tipos de divisão, defaults por divisão, tipos d
 equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava ao sair da célula.
 
 - Estados: **A definir** → **Proposta** → **Aprovada**. Só as aprovadas entram nos cálculos.
+- **Aprovação em bloco**: seleciona linhas (a caixa do cabeçalho seleciona as visíveis por
+  aprovar — usa com "Só por aprovar") e "Aprovar N selecionadas" → confirmar. As linhas que não
+  cumprem (campos obrigatórios, fonte) ficam por aprovar e a app diz quais e porquê.
 - Uma linha só pode ser aprovada com os campos obrigatórios (*) preenchidos; nas tabelas
   técnicas, também com a **fonte** (artigo RTIEBT, formador…).
 - Alterar uma regra aprovada retira-lhe a aprovação.
