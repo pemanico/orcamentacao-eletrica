@@ -46,22 +46,23 @@ export const RULE_STATE_LABEL: Record<RuleState, string> = {
 export const RULE_TABLE_IDS = ["tipos_divisao", "defaults_divisao", "tipos_circuito", "equipamentos", "mao_de_obra", "parametros"] as const;
 export type RuleTableId = (typeof RULE_TABLE_IDS)[number];
 
-export const CIRCUIT_KINDS = ["tomadas", "iluminacao", "dedicado"] as const;
+export const CIRCUIT_KINDS = ["tomadas", "iluminacao", "dedicado", "estores"] as const;
 
 /** Base da quantidade nos defaults por divisão. Vazio conta como "divisao". */
-export const QUANTITY_BASES = ["divisao", "m2", "m"] as const;
+export const QUANTITY_BASES = ["divisao", "m2", "m", "janela"] as const;
 export type QuantityBase = (typeof QUANTITY_BASES)[number];
 export const QUANTITY_BASE_LABEL: Record<QuantityBase, string> = {
   divisao: "por divisão",
   m2: "por m² de área",
   m: "por m de comprimento",
+  janela: "por janela",
 };
 
 /**
  * Natureza da carga, nas categorias do RTIEBT 801.5.8 (+ VE, secção 722). É a chave que
  * liga uma linha de regras aos valores do ficheiro de referência (regras/referencia_rtiebt.csv).
  */
-export const LOAD_KINDS = ["iluminacao", "tomadas", "maquinas_lavar", "termoacumulador", "fogao", "climatizacao", "ve", "outro"] as const;
+export const LOAD_KINDS = ["iluminacao", "tomadas", "maquinas_lavar", "termoacumulador", "fogao", "climatizacao", "estores", "ve", "outro"] as const;
 export type LoadKind = (typeof LOAD_KINDS)[number];
 export const LOAD_LABEL: Record<LoadKind, string> = {
   iluminacao: "iluminação",
@@ -70,6 +71,7 @@ export const LOAD_LABEL: Record<LoadKind, string> = {
   termoacumulador: "termoacumulador",
   fogao: "fogão (placa/forno)",
   climatizacao: "climatização (AC/BC)",
+  estores: "estores elétricos",
   ve: "carregador VE",
   outro: "outro",
 };
@@ -91,7 +93,7 @@ export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
     id: "defaults_divisao",
     label: "Defaults por divisão",
     description:
-      "Pontos propostos por defeito em cada tipo de divisão. \"Por divisão\": a quantidade é fixa. \"Por m²\" ou \"por m de comprimento\": a quantidade repete-se a cada X m² ou m (ex.: 1 ponto de luz cada 4 m de corredor), com um mínimo. O questionário ao cliente pode alterá-los.",
+      "Pontos propostos por defeito em cada tipo de divisão. \"Por divisão\": a quantidade é fixa. \"Por m²\" ou \"por m de comprimento\": a quantidade repete-se a cada X m² ou m (ex.: 1 ponto de luz cada 4 m de corredor), com um mínimo. \"Por janela\": multiplica pelas janelas da divisão (ex.: estores). O questionário ao cliente pode alterá-los.",
     requiresSource: false,
     columns: [
       { key: "divisao", label: "Divisão", kind: "enum", options: ROOM_TYPES, dynamicOptions: "room_types", required: true, width: 150 },

@@ -56,7 +56,8 @@ const MIN_SECTION_KEY: Partial<Record<LoadKind, string>> = {
 const CELL_RULES: Partial<Record<RuleTableId, { column: string; ref: (load: LoadKind) => RefKey | null }[]>> = {
   tipos_circuito: [
     { column: "seccao_mm2", ref: (l) => (MIN_SECTION_KEY[l] ? ["seccao_minima_habitacao", MIN_SECTION_KEY[l]!] : null) },
-    { column: "n_condutores", ref: (l) => (l === "outro" ? null : ["circuitos", "condutores_monofasico"]) },
+    // estores: motor com subir/descer leva mais condutores do que fase + neutro + PE
+    { column: "n_condutores", ref: (l) => (l === "outro" || l === "estores" ? null : ["circuitos", "condutores_monofasico"]) },
     {
       column: "max_pontos",
       ref: (l) =>
@@ -113,7 +114,9 @@ export function inferLoad(tableId: RuleTableId, values: RuleValues): LoadKind | 
   if (tableId === "tipos_circuito") {
     if (values.tipo === "iluminacao") return "iluminacao";
     if (values.tipo === "tomadas") return "tomadas";
+    if (values.tipo === "estores") return "estores";
   }
+  if (/estore/.test(text)) return "estores";
   if (/\bve\b|veiculo|wallbox|carregador/.test(text)) return "ve";
   if (/placa|forno|fogao|inducao/.test(text)) return "fogao";
   if (/maquina|lavar|secar|loica|roupa/.test(text)) return "maquinas_lavar";

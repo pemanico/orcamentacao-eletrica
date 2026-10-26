@@ -47,8 +47,8 @@ describe("Regras", () => {
   it("carrega os valores iniciais dos CSV, sem aprovar nada", async () => {
     const r = await req("GET", "/api/rules");
     const by = Object.fromEntries(r.body.map((t: { id: string }) => [t.id, t]));
-    assert.equal(by.defaults_divisao.total, 33);
-    assert.equal(by.tipos_circuito.total, 17);
+    assert.equal(by.defaults_divisao.total, 37);
+    assert.equal(by.tipos_circuito.total, 18);
     assert.equal(by.parametros.total, 3);
     for (const t of r.body) assert.equal(t.pending, t.total, `${t.id} não devia ter nada aprovado`);
 
@@ -62,7 +62,7 @@ describe("Regras", () => {
     const again = buildApp({ db, dataDir, rulesSeedDir: seedDir });
     again.close();
     const r = await req("GET", "/api/rules");
-    assert.equal(r.body.find((t: { id: string }) => t.id === "defaults_divisao").total, 33);
+    assert.equal(r.body.find((t: { id: string }) => t.id === "defaults_divisao").total, 37);
   });
 
   it("valida os valores e aceita vírgula decimal", async () => {
@@ -205,7 +205,8 @@ describe("Regras", () => {
 
   it("defaults: \"por\" vem como por divisão na carga inicial e nas linhas antigas", async () => {
     const rows = (await req("GET", "/api/rules/defaults_divisao")).body as { values: Record<string, unknown> }[];
-    assert.ok(rows.every((r) => r.values.por === "divisao"));
+    assert.ok(rows.every((r) => r.values.por === "divisao" || r.values.elemento === "estore_motor" || r.values.elemento === "interruptor_estore"));
+    assert.equal(rows.filter((r) => r.values.por === "janela").length, 4);
     db.prepare("INSERT INTO rules (id, table_id, position, values_json, state) VALUES ('old2', 'defaults_divisao', 999, ?, 'proposta')").run(
       JSON.stringify({ divisao: "hall", elemento: "ponto_luz", quantidade: 1 }),
     );

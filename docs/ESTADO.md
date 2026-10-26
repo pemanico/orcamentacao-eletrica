@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-26 · commit `8dd6737` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-26 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -20,7 +20,7 @@ https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0�
 Instalação residencial **monofásica**, normas portuguesas (RTIEBT). Input: PDF vetorial do
 arquiteto (sempre com escala/cotas) ou DXF (casas novas; DWG converte-se com ODA File
 Converter). Renovações: só PDF ou levantamento à mão ("sem planta" fica para depois).
-Domótica fica para depois. Potência contratada é decisão dele (app calcula e avisa);
+**Domótica: sempre um projeto separado, fora desta app** (decisão 2026-10-26). Potência contratada é decisão dele (app calcula e avisa);
 diferenciais automáticos. Cablagem v1 = estimativa média de metros para custo. Materiais
 manuais (scraping depois). Mão de obra por horas (valores ainda desconhecidos). Markup 25 %
 sobre o custo. 3 orçamentos = 3 gamas de material. Orçamento detalhado, web + PDF.
@@ -67,6 +67,12 @@ confirmar).
 - **Defaults "por divisão / por m² / por m"** (decisão dele, opção b): colunas Por, Cada, Mín.
   em Defaults por divisão; `core/defaults.ts` (`defaultQuantity`, `roomLengthM`) para a F2.
   Linhas antigas migradas para "por divisão".
+- **Estores elétricos**: base "por janela" nos defaults (`windowsInRoom`: janelas no contorno
+  da divisão, tolerância = espessura da parede + 10 cm); elementos `estore_motor` e
+  `interruptor_estore` (seed: quarto e sala, 1 por janela); tipo e carga de circuito
+  "estores" (seed: linha "A definir" — circuito próprio ou com iluminação? Motor: fase, neutro,
+  subir, descer + PE, por isso o preenchimento não põe 3 condutores). Por responder: portas de
+  sacada com estore — por agora contam se desenhadas como janela.
 - **Refactor antes da F2** (graphify: `buildApp()` ligava 9 comunidades; editor com coesão 0,05).
   Servidor: `app.ts` (523 → 72 linhas) + `context.ts`, `routes/{system,projects,floors}.ts`,
   `static.ts`. Editor: `Editor.tsx` (1240 → 663) + `EditorPanel.tsx`, `dialogs.tsx`,
@@ -88,7 +94,7 @@ confirmar).
    corredor luz, cozinha luz e MLL, lavandaria MLR/secar e luz, garagem luz, exterior luz),
    agora podendo usar "por m²/m"; criar defaults para tipos usados na casa sem linhas:
    **hall (4×)**, escritório (2×, conta como quarto?), arrumos; closet e sala das máquinas
-   (linhas novas do seed não entram numa BD já carregada).
+   (linhas novas do seed não entram numa BD já carregada). Também os estores (quarto, sala…).
 2. **Ele (formador)**: horas de mão de obra, preço da hora; e o que o RTIEBT não fixa:
    disjuntor por tipo de circuito, Ks por tipo de utilização (e sobre que potência se
    aplica), potência dos equipamentos, cos φ, o que conta como "compartimento", método de

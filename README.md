@@ -150,7 +150,9 @@ equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava
 - **Defaults por divisão**: coluna **Por** — *por divisão* (quantidade fixa), *por m² de área* ou
   *por m de comprimento*, com **Cada** (ex.: 1 ponto de luz cada 4 m de corredor) e **Mín.**
   (por omissão, a própria quantidade). O comprimento é o lado maior do retângulo com a mesma
-  área e perímetro da divisão. "Por m²/m" não aprova sem o "Cada".
+  área e perímetro da divisão. "Por m²/m" não aprova sem o "Cada". **Por janela** multiplica
+  pelas janelas no contorno da divisão (estores elétricos: `estore_motor` e
+  `interruptor_estore`). Portas de sacada só contam se desenhadas como janela.
 - **Preencher com referência** (Tipos de circuito, Equipamentos, Parâmetros): mostra primeiro o
   que vai mudar e só grava quando carregas em *Aplicar*. Usa `regras/referencia_rtiebt.csv`
   (valores do RTIEBT com artigo e página). Só preenche células vazias, nunca toca em linhas

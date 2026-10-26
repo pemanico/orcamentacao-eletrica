@@ -232,14 +232,14 @@ describe("F1 — planta", () => {
     const first = page.locator("tr.rule-row").first();
     assert.equal(await first.getByLabel("Elemento").inputValue(), "ponto_luz");
     await first.getByLabel("Estado").selectOption("aprovada");
-    await page.locator(".tabs a.active .tab-count").getByText("32").waitFor();
+    await page.locator(".tabs a.active .tab-count").getByText("36").waitFor();
     await page.locator(".menu-badge").getByText(String(before - 1), { exact: true }).waitFor();
 
     // editar a quantidade de uma linha aprovada retira a aprovação
     const qtd = first.getByLabel("Qtd.");
     await qtd.fill("2");
     await qtd.press("Enter");
-    await page.locator(".tabs a.active .tab-count").getByText("33").waitFor();
+    await page.locator(".tabs a.active .tab-count").getByText("37").waitFor();
     assert.equal(await first.getByLabel("Estado").inputValue(), "proposta");
 
     // tabela técnica: sem valores nem fonte, "Aprovada" está bloqueado e explica porquê

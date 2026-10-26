@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { RULE_TABLES, approvalBlockers, defaultQuantity, roomLengthM } from "../src/index";
+import { RULE_TABLES, approvalBlockers, defaultQuantity, inferLoad, roomLengthM, windowsInRoom, type FloorState } from "../src/index";
 
 const corredor8x1_2 = { areaM2: 8 * 1.2, perimeterM: 2 * (8 + 1.2) };
 
@@ -32,5 +32,37 @@ describe("Defaults por divisão: quantidade por divisão, m² ou m", () => {
       'falta "cada" (m² ou m)',
     ]);
     assert.deepEqual(approvalBlockers(def, { values: { divisao: "corredor", elemento: "ponto_luz", quantidade: 1, por: "m", cada: 4 }, source: "" }), []);
+  });
+
+  it("por janela: estores multiplicam pelas janelas; sem janelas, zero", () => {
+    assert.equal(defaultQuantity({ quantidade: 1, por: "janela" }, { areaM2: 12, perimeterM: 14, windows: 2 }), 2);
+    assert.equal(defaultQuantity({ quantidade: 1, por: "janela" }, { areaM2: 12, perimeterM: 14, windows: 0 }), 0);
+    assert.equal(defaultQuantity({ quantidade: 1, por: "janela" }, { areaM2: 12, perimeterM: 14 }), 0);
+  });
+
+  it("conta só as janelas no contorno da divisão (parede traçada pela outra face conta)", () => {
+    const M = 10; // 10 unidades = 1 m
+    const scale = { metersPerUnit: 1 / M };
+    // quarto 4×3 m com a parede de cima traçada 0,2 m acima do contorno (face exterior)
+    const room = { polygon: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 30 }, { x: 0, y: 30 }] };
+    const state: Pick<FloorState, "walls" | "openings"> = {
+      walls: [
+        { id: "w1", a: { x: 0, y: -2 }, b: { x: 40, y: -2 }, thicknessM: 0.2 },
+        { id: "w2", a: { x: 0, y: 30 }, b: { x: 40, y: 30 }, thicknessM: 0.15 },
+        { id: "w3", a: { x: 100, y: 0 }, b: { x: 140, y: 0 }, thicknessM: 0.15 }, // outra divisão
+      ],
+      openings: [
+        { id: "j1", kind: "janela", wallId: "w1", t: 0.5, widthM: 1.2, hinge: "inicio", swing: "esquerda" },
+        { id: "j2", kind: "janela", wallId: "w2", t: 0.3, widthM: 1.2, hinge: "inicio", swing: "esquerda" },
+        { id: "p1", kind: "porta", wallId: "w2", t: 0.8, widthM: 0.8, hinge: "inicio", swing: "esquerda" },
+        { id: "j3", kind: "janela", wallId: "w3", t: 0.5, widthM: 1.2, hinge: "inicio", swing: "esquerda" },
+      ],
+    };
+    assert.equal(windowsInRoom(room, state, scale), 2);
+  });
+
+  it("estores: tipo e texto dão a carga \"estores\"", () => {
+    assert.equal(inferLoad("tipos_circuito", { tipo: "estores", agrupamento: "todos" }), "estores");
+    assert.equal(inferLoad("tipos_circuito", { tipo: "dedicado", agrupamento: "estores elétricos" }), "estores");
   });
 });
