@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CIRCUIT_KINDS,
   LOAD_LABEL,
+  QUANTITY_BASE_LABEL,
+  type QuantityBase,
   REFERENCE_TABLES,
   loadInconsistencies,
   type LoadKind,
@@ -25,6 +27,7 @@ import { useRoomTypes } from "../roomTypes";
 const optionLabel = (col: ColumnDef, v: string, catalog: RoomTypeInfo[]) => {
   if (col.key === "divisao" || col.key === "defaults_como") return roomTypeShort(catalog, v);
   if (col.key === "carga") return LOAD_LABEL[v as LoadKind] ?? v;
+  if (col.key === "por") return QUANTITY_BASE_LABEL[v as QuantityBase] ?? v;
   if ((CIRCUIT_KINDS as readonly string[]).includes(v)) return v === "iluminacao" ? "iluminação" : v;
   return v;
 };

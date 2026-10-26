@@ -110,6 +110,7 @@ function cleanValues(db: Db, tableId: RuleTableId, raw: Record<string, unknown>,
   }
   if (errors.length) throw new HttpError(400, errors.join("; "));
   if (tableId === "tipos_divisao") checkRoomType(db, out, rowId, previous);
+  if (tableId === "defaults_divisao" && out.por === null) out.por = "divisao";
   return out;
 }
 
@@ -160,6 +161,7 @@ export function seedRules(db: Db, seedDir: string, log: (m: string) => void = ()
         if (!r.ok) problems.push(r.error);
       }
       if (def.columns.some((c) => c.key === "carga") && values.carga === null) values.carga = inferLoad(id, values);
+      if (id === "defaults_divisao" && values.por === null) values.por = "divisao";
       // a carga inicial nunca aprova: a aprovação é sempre um ato teu, na app
       const state: RuleState = rec.estado === "a_definir" ? "a_definir" : "proposta";
       const notes = [rec.notas ?? "", ...problems].filter(Boolean).join(" · ");
@@ -184,6 +186,22 @@ export function backfillLoads(db: Db) {
     if ("carga" in v) continue;
     v.carga = inferLoad(r.table_id, v);
     upd.run(JSON.stringify(v), r.id);
+  }
+}
+
+/**
+ * Defaults criados antes de existir a coluna "por": ficam "por divisão" (é o que já
+ * significavam). Uma vez por linha; linhas aprovadas não mudam (vazio conta como por divisão).
+ */
+export function backfillQuantityBase(db: Db) {
+  const rows = db
+    .prepare("SELECT id, values_json FROM rules WHERE table_id = 'defaults_divisao' AND state != 'aprovada'")
+    .all() as { id: string; values_json: string }[];
+  const upd = db.prepare("UPDATE rules SET values_json = ? WHERE id = ?");
+  for (const r of rows) {
+    const v = JSON.parse(r.values_json) as RuleValues;
+    if ("por" in v) continue;
+    upd.run(JSON.stringify({ ...v, por: "divisao", cada: null, minimo: null }), r.id);
   }
 }
 

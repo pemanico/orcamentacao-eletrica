@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createContext } from "./context.ts";
 import type { Db } from "./db.ts";
 import { HttpError, Router, sendJson } from "./http.ts";
-import { backfillLoads, migrateRules, registerRuleRoutes, seedRules } from "./rules.ts";
+import { backfillLoads, backfillQuantityBase, migrateRules, registerRuleRoutes, seedRules } from "./rules.ts";
 import { registerFloorRoutes } from "./routes/floors.ts";
 import { registerProjectRoutes } from "./routes/projects.ts";
 import { registerSystemRoutes } from "./routes/system.ts";
@@ -30,6 +30,7 @@ export function buildApp(opts: {
   migrateRules(db);
   if (opts.rulesSeedDir) seedRules(db, opts.rulesSeedDir, log);
   backfillLoads(db);
+  backfillQuantityBase(db);
 
   const router = new Router();
   registerSystemRoutes(router, ctx);

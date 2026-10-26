@@ -8,7 +8,7 @@ import type { AddressInfo } from "node:net";
 import { parseCsv } from "@orc/core";
 import { buildApp } from "../src/app.ts";
 import { openDb } from "../src/db.ts";
-import { backfillLoads } from "../src/rules.ts";
+import { backfillLoads, backfillQuantityBase } from "../src/rules.ts";
 
 const seedDir = fileURLToPath(new URL("../../../regras", import.meta.url));
 const dataDir = mkdtempSync(join(tmpdir(), "orc-rules-"));
@@ -201,6 +201,27 @@ describe("Regras", () => {
 
     const ref = await req("GET", "/api/reference");
     assert.ok(ref.body.some((r: { grupo: string; chave: string; valor: string }) => r.grupo === "iz_pvc_cu_2carregados_B" && r.chave === "4" && r.valor === "32"));
+  });
+
+  it("defaults: \"por\" vem como por divisão na carga inicial e nas linhas antigas", async () => {
+    const rows = (await req("GET", "/api/rules/defaults_divisao")).body as { values: Record<string, unknown> }[];
+    assert.ok(rows.every((r) => r.values.por === "divisao"));
+    db.prepare("INSERT INTO rules (id, table_id, position, values_json, state) VALUES ('old2', 'defaults_divisao', 999, ?, 'proposta')").run(
+      JSON.stringify({ divisao: "hall", elemento: "ponto_luz", quantidade: 1 }),
+    );
+    backfillQuantityBase(db);
+    const v = JSON.parse((db.prepare("SELECT values_json FROM rules WHERE id = 'old2'").get() as { values_json: string }).values_json);
+    assert.equal(v.por, "divisao");
+    db.prepare("DELETE FROM rules WHERE id = 'old2'").run();
+
+    // por m sem "cada" não aprova
+    const r = await req("POST", "/api/rules/defaults_divisao", { values: { divisao: "corredor", elemento: "ponto_luz", quantidade: 1, por: "m" } });
+    const bad = await req("PUT", `/api/rules/defaults_divisao/${r.body.id}`, { state: "aprovada" });
+    assert.equal(bad.status, 422);
+    assert.match(bad.body.error, /falta "cada"/);
+    const ok = await req("PUT", `/api/rules/defaults_divisao/${r.body.id}`, { values: { cada: "4" }, state: "aprovada" });
+    assert.equal(ok.body.state, "aprovada");
+    await req("DELETE", `/api/rules/defaults_divisao/${r.body.id}`);
   });
 
   it("tabela desconhecida dá 404", async () => {

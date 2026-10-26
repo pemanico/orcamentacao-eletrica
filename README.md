@@ -147,6 +147,10 @@ equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava
 - Alterar uma regra aprovada retira-lhe a aprovação.
 - O número no menu **Regras** é o total por aprovar.
 - **Exportar CSV** abre no Excel, para levar ao formador.
+- **Defaults por divisão**: coluna **Por** — *por divisão* (quantidade fixa), *por m² de área* ou
+  *por m de comprimento*, com **Cada** (ex.: 1 ponto de luz cada 4 m de corredor) e **Mín.**
+  (por omissão, a própria quantidade). O comprimento é o lado maior do retângulo com a mesma
+  área e perímetro da divisão. "Por m²/m" não aprova sem o "Cada".
 - **Preencher com referência** (Tipos de circuito, Equipamentos, Parâmetros): mostra primeiro o
   que vai mudar e só grava quando carregas em *Aplicar*. Usa `regras/referencia_rtiebt.csv`
   (valores do RTIEBT com artigo e página). Só preenche células vazias, nunca toca em linhas

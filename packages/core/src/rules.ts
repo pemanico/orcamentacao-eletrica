@@ -48,6 +48,15 @@ export type RuleTableId = (typeof RULE_TABLE_IDS)[number];
 
 export const CIRCUIT_KINDS = ["tomadas", "iluminacao", "dedicado"] as const;
 
+/** Base da quantidade nos defaults por divisão. Vazio conta como "divisao". */
+export const QUANTITY_BASES = ["divisao", "m2", "m"] as const;
+export type QuantityBase = (typeof QUANTITY_BASES)[number];
+export const QUANTITY_BASE_LABEL: Record<QuantityBase, string> = {
+  divisao: "por divisão",
+  m2: "por m² de área",
+  m: "por m de comprimento",
+};
+
 /**
  * Natureza da carga, nas categorias do RTIEBT 801.5.8 (+ VE, secção 722). É a chave que
  * liga uma linha de regras aos valores do ficheiro de referência (regras/referencia_rtiebt.csv).
@@ -81,12 +90,16 @@ export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
   defaults_divisao: {
     id: "defaults_divisao",
     label: "Defaults por divisão",
-    description: "Pontos propostos por defeito em cada tipo de divisão. O questionário ao cliente pode alterá-los.",
+    description:
+      "Pontos propostos por defeito em cada tipo de divisão. \"Por divisão\": a quantidade é fixa. \"Por m²\" ou \"por m de comprimento\": a quantidade repete-se a cada X m² ou m (ex.: 1 ponto de luz cada 4 m de corredor), com um mínimo. O questionário ao cliente pode alterá-los.",
     requiresSource: false,
     columns: [
       { key: "divisao", label: "Divisão", kind: "enum", options: ROOM_TYPES, dynamicOptions: "room_types", required: true, width: 150 },
       { key: "elemento", label: "Elemento", kind: "text", required: true, width: 190 },
       { key: "quantidade", label: "Qtd.", kind: "integer", required: true, min: 0, max: 50, width: 70 },
+      { key: "por", label: "Por", kind: "enum", options: QUANTITY_BASES, width: 150 },
+      { key: "cada", label: "Cada", kind: "number", unit: "m² ou m", min: 0.5, max: 100, width: 90 },
+      { key: "minimo", label: "Mín.", kind: "integer", min: 0, max: 50, width: 70 },
     ],
   },
   tipos_circuito: {
@@ -183,6 +196,7 @@ export function approvalBlockers(def: RuleTableDef, row: Pick<RuleRow, "values" 
   const missing = def.columns.filter((c) => c.required && (row.values[c.key] === null || row.values[c.key] === undefined || row.values[c.key] === ""));
   const out = missing.map((c) => `falta ${c.label.toLowerCase()}`);
   if (def.requiresSource && !row.source.trim()) out.push("falta a fonte");
+  if (def.id === "defaults_divisao" && (row.values.por === "m2" || row.values.por === "m") && !row.values.cada) out.push("falta \"cada\" (m² ou m)");
   return out;
 }
 

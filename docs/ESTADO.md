@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-25 · commit `3301fb6` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-26 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -64,6 +64,9 @@ confirmar).
   (o material do curso dava 6 mm² por usar a coluna de 3 condutores carregados). Sem
   verificação de curto-circuito (Icn ≥ Icc máx, Icc mín ≥ Im): falta a impedância da rede.
   Ainda não ligada aos circuitos do projeto (F2/F3).
+- **Defaults "por divisão / por m² / por m"** (decisão dele, opção b): colunas Por, Cada, Mín.
+  em Defaults por divisão; `core/defaults.ts` (`defaultQuantity`, `roomLengthM`) para a F2.
+  Linhas antigas migradas para "por divisão".
 - **Refactor antes da F2** (graphify: `buildApp()` ligava 9 comunidades; editor com coesão 0,05).
   Servidor: `app.ts` (523 → 72 linhas) + `context.ts`, `routes/{system,projects,floors}.ts`,
   `static.ts`. Editor: `Editor.tsx` (1240 → 663) + `EditorPanel.tsx`, `dialogs.tsx`,
@@ -80,9 +83,12 @@ confirmar).
 
 ## Pendente (por ordem)
 
-1. **Ele**: aprovar a tabela "Defaults por divisão" (linhas "A definir": cozinha luz,
-   máquina loiça, lavandaria, corredor quantidade, exteriores, sala tomadas/interruptores;
-   corredor > 2 portas: inversor ou telerruptor?). Bloqueia a F2.
+1. **Ele** (bloqueia a F2): na BD dele (verificado 2026-10-25) nada está aprovado. Falta:
+   aprovar as 19 linhas com valor; dar quantidade às 9 vazias (sala tomadas/interruptores,
+   corredor luz, cozinha luz e MLL, lavandaria MLR/secar e luz, garagem luz, exterior luz),
+   agora podendo usar "por m²/m"; criar defaults para tipos usados na casa sem linhas:
+   **hall (4×)**, escritório (2×, conta como quarto?), arrumos; closet e sala das máquinas
+   (linhas novas do seed não entram numa BD já carregada).
 2. **Ele (formador)**: horas de mão de obra, preço da hora; e o que o RTIEBT não fixa:
    disjuntor por tipo de circuito, Ks por tipo de utilização (e sobre que potência se
    aplica), potência dos equipamentos, cos φ, o que conta como "compartimento", método de
