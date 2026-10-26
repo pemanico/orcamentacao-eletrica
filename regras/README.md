@@ -10,8 +10,8 @@ Para levar ao formador: na app, **Regras → Exportar CSV** (abre no Excel, sepa
 ## `referencia_rtiebt.csv` — valores do regulamento
 
 Não é carga inicial: é a **fonte** do botão **Preencher com referência** (Regras → Tipos de
-circuito, Equipamentos, Parâmetros). Só tem valores do RTIEBT (Portaria 949-A/2006, versão
-consolidada com a secção 722 dos veículos elétricos), cada um com o artigo ou quadro e a
+circuito, Equipamentos, Parâmetros). Só tem valores do RTIEBT (Portaria 949-A/2006, com as alterações da
+Portaria 252/2015, que aditou a secção 722 dos veículos elétricos — versão consolidada de 19-08-2015), cada um com o artigo ou quadro e a
 página do Diário da República (6682-(N)). Nada comercial.
 
 Colunas: `grupo;chave;valor;unidade;fonte;notas` (UTF-8 com BOM, para o Excel).

@@ -11,20 +11,20 @@ circuitos;max_aparelhos_climatizacao_por_circuito;5;aparelhos;RTIEBT 801.5.3, DR
 circuitos;tipo_circuito_final;monofasico;;RTIEBT 801.5.3, DR p.163;"em regra"
 circuitos;condutor_protecao;obrigatorio;;RTIEBT 801.5.6.2, DR p.163;todos os circuitos
 circuitos;condutores_monofasico;3;condutores;RTIEBT 801.5.3 e 801.5.6.2, DR p.163;fase + neutro + PE (monofásico com condutor de proteção)
-circuitos;ve_pontos_por_circuito;1;pontos;RTIEBT 722.311;cada VE num circuito dedicado
+circuitos;ve_pontos_por_circuito;1;pontos;RTIEBT 722.311 (aditada pela Portaria 252/2015);cada VE num circuito dedicado
 circuitos;protecao_sobreintensidades;disjuntor;;RTIEBT 801.5.5.1, DR p.163;
-circuitos;ve_circuito_dedicado;sim;;RTIEBT 722.311;um circuito e protecção individual por ponto de ligação (722.533.101)
+circuitos;ve_circuito_dedicado;sim;;RTIEBT 722.311 (aditada pela Portaria 252/2015);um circuito e protecção individual por ponto de ligação (722.533.101)
 potencia_minima_mono;1_compartimento;3,45;kVA;RTIEBT 801.5.2.2, DR p.163;15 A
 potencia_minima_mono;2_a_6_compartimentos;6,90;kVA;RTIEBT 801.5.2.2, DR p.163;30 A
 potencia_minima_mono;mais_de_6_compartimentos;10,35;kVA;RTIEBT 801.5.2.2, DR p.163;45 A — "compartimento" não definido no texto
 simultaneidade;habitacao_interior;;;RTIEBT 311.2 e 801.1.1.1;o regulamento NÃO fixa valores: "de acordo com as necessidades" — valores são prática de projeto
-simultaneidade;ve;1,00;;RTIEBT 722.311;<1 só com controlador de carga e vários pontos
+simultaneidade;ve;1,00;;RTIEBT 722.311 (aditada pela Portaria 252/2015);<1 só com controlador de carga e vários pontos
 diferencial;protecao_incendio_habitacao;500;mA;RTIEBT 801.5.4.1, DR p.163;IΔn ≤ 0,5 A
 diferencial;todos_circuitos;obrigatorio;;RTIEBT 801.5.9, DR p.164;disjuntor de entrada diferencial OU diferenciais por circuito/grupo
 diferencial;casas_banho;30;mA;RTIEBT 701 (701.55.02 e seg.);
 diferencial;tomadas_exterior_ate_20A;30;mA;RTIEBT 471.2.3;
 diferencial;piscinas;30;mA;RTIEBT 702;confirmar volumes na 702
-diferencial;ve;30 mA tipo A (mín.);;RTIEBT 722.531.2.101;corta todos os activos incluindo neutro
+diferencial;ve;30 mA tipo A (mín.);;RTIEBT 722.531.2.101 (aditada pela Portaria 252/2015);corta todos os activos incluindo neutro
 diferencial;terra_acima_500_ohm;30;mA;RTIEBT 531.2.6.2;
 queda_tensao;iluminacao_rede_publica;3;%;RTIEBT 525 quadro 52O, DR p.71;da origem ao ponto de utilização
 queda_tensao;outros_usos_rede_publica;5;%;RTIEBT 525 quadro 52O, DR p.71;

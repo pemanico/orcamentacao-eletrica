@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-26 · commit `21f54c3` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-26 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -126,6 +126,14 @@ confirmar).
      tudo é prática (decisão dele);
    - reserva no quadro (20–25 %) é prática, não RTIEBT.
 7. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
+
+## Fontes no projeto claude.ai
+
+O Ordep pôs no projeto "orcamentacao-eletrica" (Projects → docs): `Portaria n.º 949-A2006.pdf`
+(DR de 2006, com os quadros em imagem — é daqui que vêm as páginas "DR p.N" citadas) e
+`Portaria_949-A_2006_RTIEBT_consolidada_AAAA-MM-DD.pdf` (consolidada a 19-08-2015, com a
+Portaria 252/2015, que só aditou a secção 722 VE; os artigos usados — 433.2, 801.5.x, 471.2.3,
+525 — são iguais). Usar `project_search` antes de citar um artigo; os quadros só se leem no PDF.
 
 ## A casa dele (caso de teste)
 
