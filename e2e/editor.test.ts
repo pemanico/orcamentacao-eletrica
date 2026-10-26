@@ -262,7 +262,7 @@ describe("F1 — planta", () => {
     await preview.getByRole("button", { name: "Aplicar" }).click();
     await page.getByTestId("fill-done").waitFor();
     assert.equal(await c1.getByLabel("Secção").inputValue(), "2,5");
-    assert.equal(await c1.getByLabel("Disjuntor").inputValue(), "", "disjuntor não vem do RTIEBT");
+    assert.equal(await c1.getByLabel("Disjuntor").inputValue(), "16", "tomadas: calibre de prática");
     assert.match(await c1.getByLabel("Fonte").inputValue(), /RTIEBT 801\.5\.8/);
     if (shots) await page.screenshot({ path: join(shots, "regras-referencia.png") });
   });

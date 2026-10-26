@@ -77,3 +77,6 @@ calibre_disjuntor;50;50;A;série comercial EN 60898 (não RTIEBT);aprova só os 
 calibre_disjuntor;63;63;A;série comercial EN 60898 (não RTIEBT);aprova só os calibres que usas
 constantes;resistividade_cobre;0,0225;Ω·mm²/m;CINEL — roteiro de cálculo (não RTIEBT);valor usado no exercício do formador para ΔU
 cos_phi;por_carga;;;não RTIEBT;falta: perguntar ao formador
+pratica_disjuntor;iluminacao;10;A;prática de projeto (não RTIEBT) — confirmar com formador;calibre habitual; o RTIEBT só exige IB ≤ In ≤ Iz (433.2)
+pratica_disjuntor;tomadas;16;A;prática de projeto (não RTIEBT) — confirmar com formador;idem
+pratica_disjuntor;maquinas_lavar;16;A;prática de projeto (não RTIEBT) — confirmar com formador;idem; circuito dedicado por máquina

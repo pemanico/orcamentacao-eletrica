@@ -184,7 +184,9 @@ describe("Regras", () => {
     const rows = (await req("GET", "/api/rules/tipos_circuito")).body as { values: Record<string, unknown>; state: string; source: string }[];
     const c6 = rows.find((r) => r.values.codigo === "C6")!;
     assert.equal(c6.values.seccao_mm2, 4);
-    assert.equal(c6.values.disjuntor_A, null);
+    assert.equal(c6.values.disjuntor_A, null, "forno: decide a calculadora");
+    const c10 = rows.find((r) => r.values.codigo === "C10")!;
+    assert.equal(c10.values.disjuntor_A, 10, "iluminação: calibre de prática");
     assert.equal(c6.state, "proposta");
     assert.match(c6.source, /^Ordep; RTIEBT 801\.5\.8/);
     const ve = rows.find((r) => r.values.carga === "ve")!;

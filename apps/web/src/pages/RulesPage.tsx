@@ -389,7 +389,7 @@ function FillPreview({ plan, onApply, onCancel }: { plan: ReferenceFillPlan; onA
       <h3>Preencher com referência</h3>
       <p className="muted small">
         Só células vazias; linhas aprovadas não são tocadas; tudo fica em <strong>Proposta</strong> e a fonte (artigo RTIEBT) é acrescentada.
-        O que o regulamento não fixa (disjuntor, potência dos aparelhos, simultaneidade na habitação) fica por preencher.
+        O que o regulamento não fixa (potência dos aparelhos, simultaneidade na habitação) fica por preencher; os disjuntores de iluminação, tomadas e máquinas vêm da prática de projeto e a fonte di-lo.
       </p>
       {empty && <p>Nada para preencher.</p>}
       {plan.updates.length > 0 && (

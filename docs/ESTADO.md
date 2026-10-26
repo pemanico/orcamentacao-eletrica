@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-26 · commit `f75e9ed` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-10-26 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -126,6 +126,12 @@ confirmar).
      tudo é prática (decisão dele);
    - reserva no quadro (20–25 %) é prática, não RTIEBT.
 7. Fonte "sem planta" para renovações. F3–F5 conforme o plano.
+
+- Guia "RTIEBT — Guia de Disjuntores e Limites" (PDF ReportLab sem autor, colado por ele):
+  usado só para calibres de prática (ilum. 10 A, tomadas 16 A, máquinas 16 A) no preenchimento.
+  Erros confirmados no texto: exceção aos 8 pontos para iluminação não existe (801.5.3);
+  801.5.8 não obriga a circuitos dedicados; fusíveis permitidos para um aparelho de potência
+  elevada (801.5.5.1); 30 mA no termoacumulador só no volume 1 do WC (701).
 
 ## Fontes no projeto claude.ai
 

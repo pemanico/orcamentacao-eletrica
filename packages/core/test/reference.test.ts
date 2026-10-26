@@ -52,11 +52,13 @@ describe("Referência RTIEBT", () => {
     assert.equal(a.values.seccao_mm2, 2.5);
     assert.equal(a.values.n_condutores, 3);
     assert.equal(a.values.max_pontos, 8);
-    assert.equal(a.values.disjuntor_A, null, "o RTIEBT não fixa o disjuntor: não se inventa");
+    assert.equal(a.values.disjuntor_A, 16, "tomadas: calibre de prática");
+    assert.match(a.source, /prática de projeto \(não RTIEBT\)/);
     assert.equal(a.state, "proposta");
     assert.match(a.source, /^Ordep; RTIEBT 801\.5\.8/);
     const b = plan.updates.find((u) => u.id === "b")!;
     assert.equal(b.values.seccao_mm2, 6, "valor já preenchido não é sobrescrito");
+    assert.equal(b.values.disjuntor_A, null, "fogão: o disjuntor depende da potência (calculadora)");
     assert.ok(!plan.updates.some((u) => u.id === "c"), "linha aprovada não é tocada");
     assert.deepEqual(plan.skipped.map((s) => s.label), ["X — portão"]);
     const e = plan.updates.find((u) => u.id === "e")!;

@@ -7,8 +7,9 @@
  * - as linhas tocadas ficam em "proposta": a aprovação é sempre um ato teu;
  * - a fonte de cada valor (artigo RTIEBT) é acrescentada à fonte da linha.
  *
- * O ficheiro de referência só tem o que o regulamento diz. O que ele não fixa (disjuntor
- * por circuito, potência dos aparelhos, simultaneidade dentro da habitação) não é inventado.
+ * O ficheiro de referência tem sobretudo o que o regulamento diz. O que ele não fixa (potência
+ * dos aparelhos, simultaneidade dentro da habitação) não é inventado. Os calibres de disjuntor
+ * de iluminação, tomadas e máquinas vêm de linhas "pratica_disjuntor", com a fonte a dizê-lo.
  */
 import { LOAD_KINDS, RULE_TABLES, parseCell, parseCsv, type LoadKind, type RuleRow, type RuleState, type RuleTableId, type RuleValues } from "./rules";
 
@@ -70,6 +71,8 @@ const CELL_RULES: Partial<Record<RuleTableId, { column: string; ref: (load: Load
               : null,
     },
     { column: "diferencial", ref: (l) => (l === "ve" ? ["diferencial", "ve"] : null) },
+    // calibre fixo só onde é prática corrente; nas cargas de potência variável decide a calculadora
+    { column: "disjuntor_A", ref: (l) => (l === "iluminacao" || l === "tomadas" || l === "maquinas_lavar" ? ["pratica_disjuntor", l] : null) },
   ],
   equipamentos: [{ column: "coef_simultaneidade", ref: (l) => (l === "ve" ? ["simultaneidade", "ve"] : null) }],
 };

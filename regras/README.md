@@ -20,6 +20,7 @@ Inclui também as tabelas de correntes admissíveis (52-C1, métodos A e B), fat
 e k2 (52-E1, 52-E3), quedas de tensão (52O) e métodos de instalação (52H). Estas ainda não
 entram em nenhuma tabela da app: ficam para o motor de cálculo das secções (F2/F3).
 
-O que o regulamento **não** fixa não está aqui e não é inventado: disjuntor por circuito
-(o RTIEBT só exige In ≤ Iz), potência dos aparelhos, fatores de simultaneidade dentro da
+Linhas que **não** são do RTIEBT, e cuja fonte o diz: calibres de disjuntor de iluminação (10 A),
+tomadas (16 A) e máquinas (16 A) como prática de projeto (o RTIEBT só exige IB ≤ In ≤ Iz, 433.2);
+série de calibres; resistividade do cobre (CINEL). Não está aqui nem é inventado: potência dos aparelhos, fatores de simultaneidade dentro da
 habitação (311.2 e 801.1.1.1: "de acordo com as necessidades"), cos φ.
