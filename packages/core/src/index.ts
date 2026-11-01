@@ -13,3 +13,4 @@ export * from "./roomTypes";
 export * from "./reference";
 export * from "./sizing";
 export * from "./defaults";
+export * from "./proposal";

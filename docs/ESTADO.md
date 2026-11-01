@@ -94,10 +94,28 @@ confirmar).
   (no resto, diferencial ≤ 500 mA — 801.5.4.1/801.5.9; 30 mA em tudo é prática);
   **sem Ks** dentro da habitação no regulamento; 8 pontos por circuito "em regra"
   (801.5.3); "compartimento" não está definido (potência mínima 801.5.2.2).
+- **F2 passo 1 — proposta de quantidades** (`packages/core/src/proposal.ts`, 2026-11-01):
+  `proposeRoom`/`proposeFloor`/`totalsByElement`. Só defaults aprovados; tipo do utilizador
+  sem linhas próprias usa as do tipo base (escritório → quarto); open space = **maior valor
+  por elemento, não a soma** (somar duplicava as regras por m²) — `contributions` guarda o
+  valor de cada tipo; avisa tipos sem regras e lista as linhas por aprovar. Sem UI.
 - **Dados**: SQLite em `data/orcamentacao.db`, autosave, cópias de segurança, página Dados.
 
 ## Pendente (por ordem)
 
+0. **Plano da F2 aprovado (2026-11-01)** — B com A dentro (ele leva a planta com pontos ao
+   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso
+   `{ id, roomId, elemento, x, y, origem: auto|manual }`; 3) passo 2b (e2e pegas e F/H,
+   `ToolHandler`); 4) ferramenta "ponto" + "Propor pontos"; 5) painel previstos vs colocados.
+   Decisões dele ("ok"): colocação — luzes ao centro (grelha se por m²), tomadas pelas paredes
+   fora das aberturas, interruptor junto à porta do lado do fecho, comando de estore junto à
+   janela; voltar a propor regenera só os automáticos nunca mexidos, mantém os movidos/manuais
+   e mostra a diferença; aprovação "pontos" separada da do piso (mexer nas paredes desaprova
+   os pontos). **Simbologia americana** (decisão dele; ressalva: em PT lê-se IEC 60617 e a
+   ANSI não tem schuko/comutador de lustre/estore) — o ponto guarda só o código do elemento,
+   o símbolo vem de uma tabela de mapeamento, trocável. Por confirmar: open space max vs soma.
+   Parâmetros: ele diz que já preencheu calibres/ρ ("já está") — por confirmar C20 + 4 mm²
+   sem "provisório" e se horas/preço da hora aprovados são reais ou placeholders.
 1. **F2 desbloqueada (2026-11-01).** BD dele verificada: todas as regras aprovadas —
    defaults 58/58, tipos de circuito 18/18, equipamentos 8/8, mão de obra 10/10, parâmetros 3/3.
    Atenção: Parâmetros só tem 3 linhas, faltam os calibres e a resistividade → a calculadora dá
@@ -174,7 +192,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 62, servidor 38, e2e 29; typecheck e typecheck:web limpos — tudo verde.
+  `npm run test:e2e`. Estado dos testes: core 68, servidor 38, e2e 29; typecheck e typecheck:web limpos — tudo verde.
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele
