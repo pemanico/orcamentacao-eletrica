@@ -1391,3 +1391,27 @@ button.danger.solid {
     print-color-adjust: exact;
   }
 }
+
+/* contagens por divisão (F2) */
+.counts h4 {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.counts tr.diff td {
+  color: var(--warn);
+  font-weight: 600;
+}
+.counts .check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.counts tr.group td {
+  font-weight: 700;
+  padding-top: 8px;
+  border-bottom: 1px solid var(--line);
+}

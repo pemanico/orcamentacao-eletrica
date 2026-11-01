@@ -407,6 +407,7 @@ describe("F1 — planta", () => {
     const added = Number(/^(\d+) propostos · 0 substituídos · 0 mantidos/.exec(summary ?? "")?.[1]);
     assert.ok(added >= 5, `esperava vários pontos propostos: ${summary}`);
     assert.equal(await page.locator("svg.canvas g.point").count(), added);
+    await panel.getByTestId("counts").getByText("Tudo de acordo com as regras.").waitFor();
     if (shots) await page.screenshot({ path: join(shots, "pontos.png") });
 
     // pontos só se aprovam com a planta aprovada
@@ -449,6 +450,16 @@ describe("F1 — planta", () => {
     await page.locator(".tool.active").getByText("Ponto").waitFor();
     await clickAt(at(1, 1));
     await panel.getByText(/1 à mão/).waitFor();
+    // contagens: mais uma tomada de rede do que as regras pedem
+    const counts = panel.getByTestId("counts");
+    await counts.getByText("1 diferença(s) entre as regras e a planta.").waitFor();
+    await counts.getByRole("row", { name: "Sala e cozinha", exact: true }).waitFor();
+    await counts.getByRole("row", { name: /^Tomada de rede \(RJ45\) 1 2 \+1$/ }).waitFor();
+    if (shots) {
+      await counts.getByLabel("Só diferenças").uncheck();
+      await panel.screenshot({ path: join(shots, "contagens.png") });
+      await counts.getByLabel("Só diferenças").check();
+    }
     assert.equal(await page.locator("svg.canvas g.point").count(), before + 1);
     await clickAt(at(-3, -3));
     await page.getByRole("alert").getByText(/Clica dentro de uma divisão/).waitFor();

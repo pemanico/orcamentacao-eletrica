@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   canApprove,
+  countDiffers,
+  pointCounts,
   proposeFloor,
   proposePoints,
   validatePoints,
@@ -70,7 +72,24 @@ export function PointsPanel({
   const elements = [...new Set([...approvedRows.map((r) => String(r.values.elemento ?? "").trim()).filter(Boolean), ...FLOOR_EQUIPMENT])].sort((a, b) => elementName(a).localeCompare(elementName(b), "pt"));
   const issues = validatePoints(state);
   const roomName = (id: string) => state.rooms.find((r) => r.id === id)?.name ?? "—";
+  /** as mensagens do core começam pelo código do elemento: mostra o nome por extenso */
+  const readable = (i: { message: string; ref?: string }) => {
+    const p = i.ref ? state.points.find((q) => q.id === i.ref) : undefined;
+    return p && i.message.startsWith(p.elemento) ? elementName(p.elemento) + i.message.slice(p.elemento.length) : i.message;
+  };
   const byOrigin = (o: PointOrigin) => state.points.filter((p) => p.origem === o).length;
+  const [onlyDiffs, setOnlyDiffs] = useState(true);
+  // contagens: regras aprovadas (proposta) vs pontos na planta, por divisão e elemento
+  let counts: ReturnType<typeof pointCounts> = [];
+  if (defaults && state.scale) {
+    try {
+      counts = pointCounts(state, proposeFloor(state, defaults, catalog));
+    } catch {
+      counts = [];
+    }
+  }
+  const diffs = counts.filter(countDiffers);
+  const shownCounts = onlyDiffs ? diffs : counts;
 
   const propose = () => {
     if (!defaults) return;
@@ -122,6 +141,52 @@ export function PointsPanel({
         <p className="muted">{(["auto", "ajustado", "manual"] as const).map((o) => `${byOrigin(o)} ${ORIGIN_LABEL[o]}`).join(" · ")}</p>
       )}
 
+      {state.points.length > 0 && (
+        <div className="counts" data-testid="counts">
+          <h4>Contagens por divisão</h4>
+          <p className={diffs.length ? "warn" : "ok"}>
+            {diffs.length ? `${diffs.length} diferença(s) entre as regras e a planta.` : "Tudo de acordo com as regras."}
+          </p>
+          <label className="check">
+            <input type="checkbox" checked={onlyDiffs} onChange={(e) => setOnlyDiffs(e.target.checked)} /> Só diferenças
+          </label>
+          {shownCounts.length > 0 && (
+            <table className="table compact">
+              <thead>
+                <tr>
+                  <th>Elemento</th>
+                  <th className="num" title="Quantidade pedida pelas regras aprovadas">Regras</th>
+                  <th className="num" title="Pontos na planta">Planta</th>
+                  <th className="num">Δ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shownCounts.flatMap((r, i) => {
+                  const d = r.colocado - r.previsto;
+                  const row = (
+                    <tr key={r.roomId + r.elemento} className={countDiffers(r) ? "diff" : ""}>
+                      <td>{elementName(r.elemento)}</td>
+                      <td className="num">{r.equipamento ? "—" : r.previsto}</td>
+                      <td className="num">{r.colocado}</td>
+                      <td className="num">{r.equipamento || d === 0 ? "" : d > 0 ? `+${d}` : String(d)}</td>
+                    </tr>
+                  );
+                  // nome da divisão uma vez, antes das suas linhas
+                  return i === 0 || shownCounts[i - 1]!.roomId !== r.roomId
+                    ? [
+                        <tr key={`h-${r.roomId}`} className="group">
+                          <td colSpan={4}>{r.roomName}</td>
+                        </tr>,
+                        row,
+                      ]
+                    : [row];
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       {selPoint && (
         <div className="selection">
           <h3>Ponto</h3>
@@ -138,7 +203,7 @@ export function PointsPanel({
         <ul className="issues">
           {issues.map((i, n) => (
             <li key={n} className={i.level} onClick={() => i.ref && select({ kind: "point", id: i.ref })}>
-              {i.message}
+              {readable(i)}
             </li>
           ))}
         </ul>

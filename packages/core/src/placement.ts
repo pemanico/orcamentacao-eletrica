@@ -17,6 +17,13 @@ import { metersToUnits } from "./scale";
 import type { RoomProposal } from "./proposal";
 import type { ElectricPoint, FloorState, Opening, Point, Room, ScaleCalibration, Segment, Wall } from "./types";
 
+/**
+ * Equipamentos do piso: não vêm dos defaults por divisão, põem-se sempre à mão e estão sempre
+ * na paleta. O QE é a origem dos percursos de cabo (F3).
+ */
+export const FLOOR_EQUIPMENT = ["quadro_eletrico", "ati"] as const;
+export const isFloorEquipment = (elemento: string) => (FLOOR_EQUIPMENT as readonly string[]).includes(elemento);
+
 export type PlacementKind = "teto" | "parede" | "porta" | "janela" | "junto_janela";
 
 /** Onde se coloca um elemento, pelo código. Desconhecido → parede. */
@@ -273,3 +280,43 @@ export function roomAt(rooms: readonly Room[], p: Point): Room | null {
   const hits = rooms.filter((r) => r.polygon.length >= 3 && pointInPolygon(p, r.polygon));
   return hits.sort((a, b) => polygonArea(a.polygon) - polygonArea(b.polygon))[0] ?? null;
 }
+
+export interface CountRow {
+  roomId: string;
+  roomName: string;
+  elemento: string;
+  /** quantidade pedida pelas regras aprovadas (proposta) */
+  previsto: number;
+  /** pontos na planta */
+  colocado: number;
+  /** equipamento do piso (QE, ATI): não vem das regras, não é diferença */
+  equipamento: boolean;
+}
+
+/**
+ * Contagens por divisão e elemento: regras (proposta) vs planta. Inclui os elementos que só
+ * existem num dos lados. Pontos de divisões que já não existem não contam.
+ */
+export function pointCounts(state: Pick<FloorState, "rooms" | "points">, proposals: readonly RoomProposal[]): CountRow[] {
+  const rows: CountRow[] = [];
+  for (const room of state.rooms) {
+    const prop = proposals.find((p) => p.roomId === room.id);
+    const placed = new Map<string, number>();
+    for (const p of state.points) if (p.roomId === room.id) placed.set(p.elemento, (placed.get(p.elemento) ?? 0) + 1);
+    const els = new Set([...(prop?.elements.map((e) => e.elemento) ?? []), ...placed.keys()]);
+    for (const elemento of [...els].sort()) {
+      rows.push({
+        roomId: room.id,
+        roomName: room.name,
+        elemento,
+        previsto: prop?.elements.find((e) => e.elemento === elemento)?.quantidade ?? 0,
+        colocado: placed.get(elemento) ?? 0,
+        equipamento: isFloorEquipment(elemento),
+      });
+    }
+  }
+  return rows;
+}
+
+/** Linha com diferença entre regras e planta (equipamentos do piso não contam). */
+export const countDiffers = (r: CountRow) => !r.equipamento && r.previsto !== r.colocado;

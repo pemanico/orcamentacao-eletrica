@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { placeRoom, placementKind, pointInPolygon, proposePoints, roomAt, type FloorState, type Room, type RoomProposal } from "../src/index";
+import { countDiffers, placeRoom, placementKind, pointCounts, pointInPolygon, proposePoints, roomAt, type FloorState, type Room, type RoomProposal } from "../src/index";
 
 // 1 unidade = 1 cm. Divisão 4×3 m; janela de 1,2 m ao centro da parede de cima (y = 0);
 // porta de 0,8 m na parede de baixo (y = 300), centro em x = 100, dobradiça no início (x = 60).
@@ -98,5 +98,35 @@ describe("F2 — colocação automática", () => {
     assert.equal(roomAt([room, small], { x: 50, y: 50 })?.id, "s");
     assert.equal(roomAt([room, small], { x: 300, y: 200 })?.id, "q");
     assert.equal(roomAt([room], { x: 900, y: 900 }), null);
+  });
+});
+
+describe("F2 — contagens por divisão (regras vs planta)", () => {
+  const props: RoomProposal[] = [
+    {
+      roomId: "q",
+      roomName: "Quarto",
+      metrics: { areaM2: 12, perimeterM: 14 },
+      elements: [
+        { elemento: "tomada", quantidade: 3, contributions: [] },
+        { elemento: "ponto_luz", quantidade: 1, contributions: [] },
+      ],
+      typesWithoutRules: [],
+      pending: [],
+    },
+  ];
+  const pt = (id: string, elemento: string, roomId = "q") => ({ id, roomId, elemento, x: 0, y: 0, origem: "manual" as const });
+
+  it("previsto vs colocado, elementos só de um lado, equipamentos do piso à parte", () => {
+    const rows = pointCounts({ rooms: [room], points: [pt("1", "tomada"), pt("2", "tomada"), pt("3", "ponto_luz"), pt("4", "tomada_rede"), pt("5", "quadro_eletrico"), pt("6", "tomada", "apagada")] }, props);
+    assert.deepEqual(
+      rows.map((r) => [r.elemento, r.previsto, r.colocado, countDiffers(r)]),
+      [
+        ["ponto_luz", 1, 1, false],
+        ["quadro_eletrico", 0, 1, false],
+        ["tomada", 3, 2, true],
+        ["tomada_rede", 0, 1, true],
+      ],
+    );
   });
 });

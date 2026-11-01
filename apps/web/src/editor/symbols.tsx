@@ -44,11 +44,9 @@ const NAMES: Record<string, string> = {
   ati: "Quadro de telecomunicações (ATI)",
 };
 
-/**
- * Equipamentos do piso: não vêm dos defaults por divisão, põem-se sempre à mão e estão sempre
- * na paleta. O QE é a origem dos percursos de cabo (F3).
- */
-export const FLOOR_EQUIPMENT = ["quadro_eletrico", "ati"] as const;
+
+/** Equipamentos do piso (QE, ATI): a lista está no core, junto das contagens. */
+export { FLOOR_EQUIPMENT } from "@orc/core";
 
 export function elementName(code: string): string {
   const known = NAMES[code.toLowerCase()];

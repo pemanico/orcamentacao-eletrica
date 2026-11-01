@@ -152,6 +152,11 @@ confirmar).
     `quadro_eletrico` (QE: retângulo com metade preenchida) e `ati` (retângulo com "ATI" —
     armário de telecomunicações individual, ITED) em `FLOOR_EQUIPMENT` (`symbols.tsx`): sempre
     na paleta, mesmo sem defaults aprovados; põem-se à mão. O QE será a origem dos metros na F3.
+  - **Contagens por divisão** (F2 passo 5, 2026-11-01): core `pointCounts` / `countDiffers`
+    (regras aprovadas = proposta vs pontos na planta, por divisão e elemento; inclui os que só
+    existem de um lado; QE/ATI marcados `equipamento`, não contam como diferença).
+    `FLOOR_EQUIPMENT` passou para o core (`placement.ts`). Painel: tabela agrupada por divisão,
+    "Só diferenças" (ligado por omissão), Δ a laranja. Avisos de validação com o nome por extenso.
   - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
     não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
     mobiliário.
@@ -173,14 +178,12 @@ confirmar).
 0b. **Por responder (2026-11-01):**
    - Domótica: **confirmado por ele (2026-11-01) — projeto à parte, sem preparação nesta app**
      (o pedido de "preparar para a domótica" foi engano dele).
-   - Resto da F2 segundo o plano: **contagens por divisão** (regras vs planta — proposto fazer,
-     é o que a F5 precisa) e **questionário por divisão** (proposto cortar: a edição na planta
-     já resolve os pedidos do cliente).
-   - F3: o plano fala em "grafo de percursos"; a decisão dele foi "cablagem v1 = estimativa
-     média". Proposta F3 v1: circuitos pelos tipos de circuito aprovados (≤ 8 pontos), potência
-     e calculadora de secções, metros = distância QE → ponto × fator de traçado + descidas pelo
-     pé-direito; grafo só depois do gate dos orçamentos reais.
-   - Ponto fora da divisão: aviso (atual) ou erro na aprovação dos pontos?
+   - Resto da F2: **contagens feitas**; **questionário por divisão cortado** (proposta minha,
+     ele respondeu "sim, faz as contagens" — confirmar se quiser o questionário de volta).
+   - F3: ele quer **as duas** — estimativa de metros (distância QE → ponto × fator de traçado +
+     descidas pelo pé-direito) **e** grafo de percursos. Proposta: estimativa primeiro (dá números
+     já para a F5), grafo depois; confirmar a ordem ao arrancar a F3.
+   - Ponto fora da divisão: **fica aviso** (decisão dele).
    - O teste com a casa dele correu bem ("ficou ótimo"), sem detalhes.
 1. **F2 desbloqueada (2026-11-01).** BD dele verificada: todas as regras aprovadas —
    defaults 58/58, tipos de circuito 18/18, equipamentos 8/8, mão de obra 10/10, parâmetros 3/3.
@@ -258,7 +261,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 81, servidor 39, e2e 36; typecheck limpo; **typecheck:web limpo no PC dele** (2026-11-01, sobre `116bfd8`).
+  `npm run test:e2e`. Estado dos testes: core 82, servidor 39, e2e 36; typecheck limpo; **typecheck:web limpo no PC dele** (2026-11-01, sobre `116bfd8`).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele
