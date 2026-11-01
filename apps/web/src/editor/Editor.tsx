@@ -14,7 +14,6 @@ import {
   validateFloor,
   type FloorState,
   type Opening,
-  type OpeningKind,
   type Point,
   type Room,
   type SnapResult,
@@ -27,20 +26,15 @@ import { roomColor, useRoomTypes } from "../roomTypes";
 import { useHistory } from "./useHistory";
 import { CalibrationDialog, RoomDialog } from "./dialogs";
 import { EditorPanel } from "./EditorPanel";
-import { TOOLS, type Selection, type Tool } from "./tools";
+import { TOOLS, toolById, type HandleDrag, type Selection, type Tool, type ToolContext } from "./tools";
 import { useAutosave } from "./useAutosave";
 import { usePref } from "./usePref";
 import { useViewport } from "./useViewport";
 import { angleDeg, distToLine, isTyping, uid } from "./util";
 
-type Drag =
-  | { kind: "pan"; startX: number; startY: number; tx: number; ty: number; click?: Selection | "none" }
-  | { kind: "wall-a" | "wall-b"; id: string }
-  | { kind: "room-v"; id: string; index: number };
+type Drag = { kind: "pan"; startX: number; startY: number; tx: number; ty: number; click?: Selection | "none" } | HandleDrag;
 
 const SNAP_PX = 10;
-const DEFAULT_WALL_T = 0.15;
-const DEFAULT_WIDTH: Record<OpeningKind, number> = { porta: 0.8, janela: 1.2 };
 
 export function Editor({
   floor,
@@ -181,87 +175,58 @@ export function Editor({
   const updateRoom = (id: string, patch: Partial<Room>) =>
     commit((s) => ({ ...s, rooms: s.rooms.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
 
+  // ---------------------------------------------------------------- ferramentas
+  const handler = toolById(tool);
+  const k = view.k;
+  const sw = (px: number) => px / k; // espessura constante em píxeis de ecrã
+  const fs = 12 / k;
+
+  /** Contexto passado à ferramenta ativa. startPan/startHandleDrag só fazem algo num clique. */
+  const toolContext = (pointer?: { e: RPointerEvent<SVGSVGElement> }): ToolContext => ({
+    state,
+    commit,
+    scale,
+    k,
+    sw,
+    fs,
+    snapTol: tol,
+    draft,
+    setDraft,
+    cancelDraft,
+    cursor,
+    setCursor,
+    snap: snapPoint,
+    hoverWall,
+    setHoverWall,
+    nearestWall,
+    clampT,
+    selection,
+    setSelection,
+    setMessage,
+    openCalibration: (a, b) => setCalibDialog({ a, b }),
+    finishRoom,
+    startPan: (click) => {
+      if (!pointer) return;
+      const { e } = pointer;
+      e.preventDefault();
+      svgRef.current!.setPointerCapture(e.pointerId);
+      dragRef.current = { kind: "pan", startX: e.clientX, startY: e.clientY, tx: view.tx, ty: view.ty, click };
+    },
+    startHandleDrag: (d) => {
+      if (!pointer) return;
+      svgRef.current!.setPointerCapture(pointer.e.pointerId);
+      dragRef.current = d;
+      setPreview(state);
+    },
+  });
+
   // ---------------------------------------------------------------- rato
   const onPointerDown = (e: RPointerEvent<SVGSVGElement>) => {
-    const svg = svgRef.current!;
-    const target = e.target as Element;
-
-    const startPan = (click?: Selection | "none") => {
-      e.preventDefault();
-      svg.setPointerCapture(e.pointerId);
-      dragRef.current = { kind: "pan", startX: e.clientX, startY: e.clientY, tx: view.tx, ty: view.ty, click };
-    };
-
+    const ctx = toolContext({ e });
     // mover a vista: botão do meio ou espaço, em qualquer ferramenta
-    if (e.button === 1 || (mods.space && e.button === 0)) return startPan();
+    if (e.button === 1 || (mods.space && e.button === 0)) return ctx.startPan();
     if (e.button !== 0) return;
-
-    if (tool === "selecionar") {
-      const handle = target.closest("[data-handle]");
-      if (handle && selection) {
-        svg.setPointerCapture(e.pointerId);
-        const kind = handle.getAttribute("data-handle") as "wall-a" | "wall-b" | "room-v";
-        dragRef.current =
-          kind === "room-v"
-            ? { kind, id: selection.id, index: Number(handle.getAttribute("data-index")) }
-            : { kind, id: selection.id };
-        setPreview(state);
-        return;
-      }
-      // arrastar move a vista; um clique sem arrasto seleciona o que estiver por baixo
-      const el = target.closest("[data-kind]");
-      return startPan(el ? { kind: el.getAttribute("data-kind") as "wall", id: el.getAttribute("data-id")! } : "none");
-    }
-
-    const raw = toPage(e.clientX, e.clientY);
-
-    const last = draft[draft.length - 1] ?? null;
-    const p = snapPoint(raw, tool === "parede" || tool === "divisao" ? last : null).point;
-
-    if (tool === "calibrar") {
-      if (draft.length === 0) setDraft([p]);
-      else {
-        setCalibDialog({ a: draft[0]!, b: p });
-        setDraft([]);
-      }
-      return;
-    }
-
-    if (tool === "parede") {
-      if (last && dist(last, p) * view.k < 3) return; // clique repetido no mesmo sítio
-      if (last) {
-        commit((s) => ({ ...s, walls: [...s.walls, { id: uid(), a: last, b: p, thicknessM: DEFAULT_WALL_T }] }));
-      }
-      setDraft([p]);
-      return;
-    }
-
-    if (tool === "divisao") {
-      const first = draft[0];
-      if (first && draft.length >= 3 && dist(first, p) * view.k <= SNAP_PX) return finishRoom(draft);
-      if (last && dist(last, p) * view.k < 3) return;
-      setDraft([...draft, p]);
-      return;
-    }
-
-    if (tool === "porta" || tool === "janela") {
-      if (!scale) return setMessage("Calibra a escala antes de colocar portas e janelas.");
-      const hit = nearestWall(raw);
-      if (!hit) return setMessage("Clica sobre uma parede já traçada.");
-      const widthM = DEFAULT_WIDTH[tool];
-      const o: Opening = {
-        id: uid(),
-        kind: tool,
-        wallId: hit.wall.id,
-        t: clampT(hit.wall, hit.t, widthM),
-        widthM,
-        hinge: "inicio",
-        swing: "esquerda",
-      };
-      commit((s) => ({ ...s, openings: [...s.openings, o] }));
-      setSelection({ kind: "opening", id: o.id });
-      setMessage(null);
-    }
+    handler.pointerDown?.(ctx, { raw: toPage(e.clientX, e.clientY), target: e.target as Element });
   };
 
   const onPointerMove = (e: RPointerEvent<SVGSVGElement>) => {
@@ -290,17 +255,9 @@ export function Editor({
       return;
     }
 
-    if (tool === "porta" || tool === "janela") {
-      setHoverWall(nearestWall(raw));
-      setCursor({ point: raw, kind: "livre" });
-      return;
-    }
-    if (tool === "selecionar") {
-      setCursor({ point: raw, kind: "livre" });
-      return;
-    }
+    if (handler.pointerMove) return handler.pointerMove(toolContext(), raw);
     const last = draft[draft.length - 1] ?? null;
-    setCursor(snapPoint(raw, tool === "parede" || tool === "divisao" ? last : null));
+    setCursor(snapPoint(raw, handler.orthoFromDraft ? last : null));
   };
 
   const onPointerUp = (e: RPointerEvent<SVGSVGElement>) => {
@@ -317,10 +274,7 @@ export function Editor({
     }
   };
 
-  const onDoubleClick = () => {
-    if (tool === "parede") cancelDraft();
-    if (tool === "divisao" && draft.length >= 3) finishRoom(draft);
-  };
+  const onDoubleClick = () => handler.doubleClick?.(toolContext());
 
   // ---------------------------------------------------------------- teclado
   useEffect(() => {
@@ -343,7 +297,7 @@ export function Editor({
         else setSelection(null);
         return;
       }
-      if (e.key === "Enter" && tool === "divisao") return finishRoom(draft);
+      if (handler.keyDown?.(toolContext(), e)) return;
       if ((e.key === "Delete" || e.key === "Backspace") && selection) return deleteSelection();
       const sel = selection?.kind === "opening" ? state.openings.find((o) => o.id === selection.id) : null;
       if (sel && k === "f") return updateOpening(sel.id, { swing: sel.swing === "esquerda" ? "direita" : "esquerda" });
@@ -371,16 +325,12 @@ export function Editor({
   const { saveStatus, approvedAt, approve } = useAutosave(floor, state, meta, setMessage);
 
   // ---------------------------------------------------------------- render
-  const k = view.k;
-  const sw = (px: number) => px / k; // espessura constante em píxeis de ecrã
-  const fs = 12 / k;
   const selWall = selection?.kind === "wall" ? shown.walls.find((w) => w.id === selection.id) : undefined;
   const selOpening = selection?.kind === "opening" ? shown.openings.find((o) => o.id === selection.id) : undefined;
   const selRoom = selection?.kind === "room" ? shown.rooms.find((r) => r.id === selection.id) : undefined;
   const lastDraft = draft[draft.length - 1];
   const scaleCheck = scale?.stampDenominator ? checkAgainstStamp(scale, scale.stampDenominator) : null;
-  const toolInfo = TOOLS.find((t) => t.id === tool)!;
-  const cursorStyle = dragRef.current?.kind === "pan" || mods.space ? "grabbing" : tool === "selecionar" ? "default" : "crosshair";
+  const cursorStyle = dragRef.current?.kind === "pan" || mods.space ? "grabbing" : handler.cursor ?? "crosshair";
 
   return (
     <div className={`editor ${panelOpen ? "" : "panel-closed"}`}>
@@ -391,7 +341,7 @@ export function Editor({
             className={`tool ${tool === t.id ? "active" : ""}`}
             onClick={() => selectTool(t.id)}
             title={`${t.label} (${t.key})`}
-            disabled={((t.id === "porta" || t.id === "janela") && !scale) || (t.id === "calibrar" && isDxf)}
+            disabled={t.disabled?.({ scale, isDxf }) ?? false}
           >
             <span className="tool-key">{t.key}</span>
             {t.label}
@@ -419,7 +369,7 @@ export function Editor({
         {hintOpen && (
           <div className="tool-hint">
             <span>
-              <strong>{toolInfo.label}:</strong> {toolInfo.help}
+              <strong>{handler.label}:</strong> {handler.help}
             </span>
             <button className="hint-close" onClick={() => setHintOpen(false)} title="Esconder ajuda (volta no botão ? Ajuda)" aria-label="Esconder ajuda">
               ×
@@ -515,42 +465,20 @@ export function Editor({
                 );
               })}
 
-            {/* pré-visualização de porta/janela */}
-            {scale && hoverWall && (tool === "porta" || tool === "janela") && (() => {
-              const o: Opening = {
-                id: "preview",
-                kind: tool,
-                wallId: hoverWall.wall.id,
-                t: clampT(hoverWall.wall, hoverWall.t, DEFAULT_WIDTH[tool]),
-                widthM: DEFAULT_WIDTH[tool],
-                hinge: "inicio",
-                swing: "esquerda",
-              };
-              const g = openingGeometry(hoverWall.wall, o, scale);
-              return g ? <line x1={g.j1.x} y1={g.j1.y} x2={g.j2.x} y2={g.j2.y} strokeWidth={sw(7)} className="opening-preview" /> : null;
-            })()}
-
-            {/* calibração */}
-            {scale && tool === "calibrar" && (
-              <g className="calib">
-                <line x1={scale.refA.x} y1={scale.refA.y} x2={scale.refB.x} y2={scale.refB.y} strokeWidth={sw(1.5)} strokeDasharray={`${sw(6)} ${sw(4)}`} />
-                <text x={(scale.refA.x + scale.refB.x) / 2} y={(scale.refA.y + scale.refB.y) / 2 - fs * 0.6} fontSize={fs} textAnchor="middle">
-                  {formatM(scale.refMeters)} m
-                </text>
-              </g>
-            )}
+            {/* desenho da ferramenta ativa: pré-visualizações, cota de calibração */}
+            {tool !== "selecionar" && handler.overlay?.({ ...toolContext(), state: shown })}
 
             {/* traçado em curso */}
             {draft.length > 0 && (
               <g className="draft">
-                {tool === "divisao" && draft.length > 1 && (
+                {handler.draftPolygon && draft.length > 1 && (
                   <polyline points={draft.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" strokeWidth={sw(2)} />
                 )}
                 {lastDraft && cursor && (
                   <line x1={lastDraft.x} y1={lastDraft.y} x2={cursor.point.x} y2={cursor.point.y} strokeWidth={sw(2)} strokeDasharray={`${sw(5)} ${sw(4)}`} />
                 )}
                 {draft.map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r={sw(i === 0 && tool === "divisao" ? 6 : 4)} />
+                  <circle key={i} cx={p.x} cy={p.y} r={sw(i === 0 && handler.draftPolygon ? 6 : 4)} />
                 ))}
                 {lastDraft && cursor && scale && (
                   <text x={(lastDraft.x + cursor.point.x) / 2} y={(lastDraft.y + cursor.point.y) / 2 - fs * 0.5} fontSize={fs} textAnchor="middle" className="draft-len">
@@ -560,15 +488,8 @@ export function Editor({
               </g>
             )}
 
-            {/* pegas de edição */}
-            {tool === "selecionar" && selWall &&
-              (["a", "b"] as const).map((end) => (
-                <circle key={end} data-handle={`wall-${end}`} cx={selWall[end].x} cy={selWall[end].y} r={sw(6)} className="handle" />
-              ))}
-            {tool === "selecionar" && selRoom &&
-              selRoom.polygon.map((p, i) => (
-                <circle key={i} data-handle="room-v" data-index={i} cx={p.x} cy={p.y} r={sw(6)} className="handle" />
-              ))}
+            {/* pegas de edição (Selecionar): por cima do traçado, como antes */}
+            {tool === "selecionar" && handler.overlay?.({ ...toolContext(), state: shown })}
 
             {/* cursor com snap */}
             {cursor && cursor.kind !== "livre" && (

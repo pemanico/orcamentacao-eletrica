@@ -86,9 +86,13 @@ confirmar).
   Servidor: `app.ts` (523 → 72 linhas) + `context.ts`, `routes/{system,projects,floors}.ts`,
   `static.ts`. Editor: `Editor.tsx` (1240 → 663) + `EditorPanel.tsx`, `dialogs.tsx`,
   `useAutosave.ts`, `useViewport.ts`, `usePref.ts`, `tools.ts`, `util.ts`. Só código movido.
-  **Por fazer no arranque da F2 (passo 2b, aprovado adiar):** interface `ToolHandler` com um
-  ficheiro por ferramenta em `editor/tools/`, para a ferramenta "ponto" entrar sem tocar nas
-  outras; antes, e2e de arrastar pegas e F/H na porta.
+  **Passo 2b feito (F2 passo 3, 2026-11-01):** `editor/tools/` — `types.ts` (`ToolHandler`,
+  `ToolContext`), um ficheiro por ferramenta (`selecionar`, `calibrar`, `parede`, `divisao`,
+  `abertura` = porta + janela) e `index.ts` (lista `TOOLS`, `Tool` derivado). O Editor trata
+  vista, arrastos de pegas, histórico, atalhos globais e seleção; a ferramenta trata clique,
+  movimento, duplo clique, teclas próprias e `overlay` (com o estado em arrasto). Ferramenta
+  nova = um ficheiro + uma linha em `index.ts`. Editor 664 → 585 linhas. Antes do refactor,
+  e2e novos: arrastar pega de parede, canto de divisão e F/H na porta (fixam o comportamento).
 - Achados no RTIEBT que contrariam resumos de IA: fogão mínimo **4 mm²** (801.5.8);
   30 mA obrigatório só em WC, tomadas exteriores ≤ 20 A, piscina, VE e terra > 500 Ω
   (no resto, diferencial ≤ 500 mA — 801.5.4.1/801.5.9; 30 mA em tudo é prática);
@@ -113,8 +117,7 @@ confirmar).
 ## Pendente (por ordem)
 
 0. **Plano da F2 aprovado (2026-11-01)** — B com A dentro (ele leva a planta com pontos ao
-   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso (feito); 3) passo 2b (e2e pegas e F/H,
-   `ToolHandler`); 4) ferramenta "ponto" + "Propor pontos"; 5) painel previstos vs colocados.
+   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso (feito); 3) passo 2b (feito); 4) ferramenta "ponto" + "Propor pontos"; 5) painel previstos vs colocados.
    Decisões dele ("ok"): colocação — luzes ao centro (grelha se por m²), tomadas pelas paredes
    fora das aberturas, interruptor junto à porta do lado do fecho, comando de estore junto à
    janela; voltar a propor regenera só os automáticos nunca mexidos, mantém os movidos/manuais
@@ -200,7 +203,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 72, servidor 39, e2e 29; typecheck limpo. **typecheck:web por correr no PC dele** (passo 2 mexeu em `api.ts` e `Editor.tsx`; aqui não há @types/react).
+  `npm run test:e2e`. Estado dos testes: core 72, servidor 39, e2e 32; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2 e 3 mexeram em `api.ts`, `Editor.tsx` e `editor/tools/`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele
