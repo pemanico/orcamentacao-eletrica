@@ -160,6 +160,24 @@ confirmar).
   - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
     não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
     mobiliário.
+- **F3 passo 0 — regras para os circuitos** (2026-11-01, aprovado por ele):
+  - Defaults por divisão: coluna **Circuito** (`circuito`, enum dinâmico `circuit_types` = códigos
+    de Tipos de circuito; não obrigatória). Tipos de circuito: coluna **Âmbito** (`ambito`:
+    `todas` = um circuito para todas as divisões / `divisao` = um por divisão; vazio = todas).
+    Servidor: código de circuito em uso nos defaults não muda nem se apaga; códigos repetidos
+    recusados (409).
+  - Parâmetros ("Preencher com referência", `pratica_cablagem` no `referencia_rtiebt.csv`, não
+    RTIEBT): **fator de traçado 1,3**, **altura de montagem — tomadas 0,30 m**, **— interruptores
+    1,10 m**. Metros por ponto = distância QE → ponto × fator + (pé-direito − altura de montagem)
+    com percurso pelo teto (teto falso/desvão — a casa dele); opção por projeto "percurso dos
+    tubos: teto | pavimento" entra com o cálculo.
+  - Decisões dele: circuito > 8 pontos (máx. pontos do tipo) divide-se; estimativa primeiro,
+    grafo de percursos depois (quer as duas).
+  - **Por fazer por ele na BD real:** em Parâmetros "Preencher com referência" (os 3 novos) e
+    aprovar; em Defaults por divisão escolher o Circuito de cada elemento; em Tipos de circuito
+    o Âmbito (C2–C4 "um por quarto" → `divisao`). **Numeração:** os códigos atuais misturam tipo
+    e número (C2-C4, C7b, C12b) — proposta: o código passa a ser só o nome do tipo e a numeração
+    C1…Cn gera-se por projeto na F3 (por ordem da tabela); por confirmar.
 - **Dados**: SQLite em `data/orcamentacao.db`, autosave, cópias de segurança, página Dados.
 
 ## Pendente (por ordem)
@@ -261,7 +279,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 82, servidor 39, e2e 36; typecheck limpo; **typecheck:web limpo no PC dele** (2026-11-01, sobre `116bfd8`).
+  `npm run test:e2e`. Estado dos testes: core 82, servidor 40, e2e 36; typecheck limpo; **typecheck:web limpo no PC dele** (2026-11-01, sobre `116bfd8`).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele

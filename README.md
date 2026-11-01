@@ -177,6 +177,10 @@ equipamentos, mão de obra, parâmetros). Edita diretamente nas células e grava
   área e perímetro da divisão. "Por m²/m" não aprova sem o "Cada". **Por janela** multiplica
   pelas janelas no contorno da divisão (estores elétricos: `estore_motor` e
   `interruptor_estore`). Portas de sacada só contam se desenhadas como janela.
+- **Circuitos (F3)**: em Defaults por divisão, a coluna **Circuito** diz a que tipo de circuito
+  vai cada elemento (os códigos vêm de Tipos de circuito). Em Tipos de circuito, **Âmbito**: "um
+  por divisão" (ex.: tomadas de cada quarto) ou "um para todas" (ex.: iluminação de todas as casas
+  de banho). Um código em uso nos defaults não muda nem se apaga.
 - **Preencher com referência** (Tipos de circuito, Equipamentos, Parâmetros): mostra primeiro o
   que vai mudar e só grava quando carregas em *Aplicar*. Usa `regras/referencia_rtiebt.csv`
   (valores do RTIEBT com artigo e página). Só preenche células vazias, nunca toca em linhas

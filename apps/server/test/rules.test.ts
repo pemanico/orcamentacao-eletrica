@@ -196,7 +196,7 @@ describe("Regras", () => {
     assert.equal(again.body.updates.length, 0, "nada mais para preencher");
 
     const params = await req("POST", "/api/rules/parametros/reference-fill");
-    assert.equal(params.body.inserts.length, 16);
+    assert.equal(params.body.inserts.length, 19); // + fator de traçado e 2 alturas de montagem (F3)
     assert.equal((await req("POST", "/api/rules/parametros/reference-fill")).body.inserts.length, 0);
 
     assert.equal((await req("GET", "/api/rules/mao_de_obra/reference-fill")).status, 400);
@@ -250,6 +250,30 @@ describe("Regras", () => {
     // ids de outra tabela não passam
     const r3 = await req("POST", "/api/rules/equipamentos/approve", { ids: [tc[0]!.id] });
     assert.deepEqual(r3.body.skipped[0].blockers, ["linha não encontrada"]);
+  });
+
+  it("F3: coluna Circuito só aceita códigos de Tipos de circuito; código em uso não muda nem se apaga", async () => {
+    const circuits = (await req("GET", "/api/rules/tipos_circuito")).body as { id: string; values: Record<string, unknown> }[];
+    const c1 = circuits.find((c) => c.values.codigo === "C1")!;
+    const d = await req("POST", "/api/rules/defaults_divisao", { values: { divisao: "sala", elemento: "tomada", quantidade: "4", circuito: "C99" } });
+    assert.equal(d.status, 400, "código que não existe");
+    const ok = await req("POST", "/api/rules/defaults_divisao", { values: { divisao: "sala", elemento: "tomada", quantidade: "4", circuito: "C1" } });
+    assert.equal(ok.status, 201);
+    assert.equal(ok.body.values.circuito, "C1");
+
+    const rename = await req("PUT", `/api/rules/tipos_circuito/${c1.id}`, { values: { ...c1.values, codigo: "C1a" } });
+    assert.equal(rename.status, 409);
+    assert.match(rename.body.error, /em uso/);
+    assert.equal((await req("DELETE", `/api/rules/tipos_circuito/${c1.id}`)).status, 409);
+
+    const c5 = circuits.find((c) => c.values.codigo === "C5")!;
+    const dup = await req("PUT", `/api/rules/tipos_circuito/${c5.id}`, { values: { ...c5.values, codigo: "C1" } });
+    assert.equal(dup.status, 409, "código repetido");
+
+    const scope = await req("PUT", `/api/rules/tipos_circuito/${c5.id}`, { values: { ...c5.values, ambito: "divisao" } });
+    assert.equal(scope.body.values.ambito, "divisao");
+    assert.equal((await req("PUT", `/api/rules/tipos_circuito/${c5.id}`, { values: { ...c5.values, ambito: "x" } })).status, 400);
+    await req("DELETE", `/api/rules/defaults_divisao/${ok.body.id}`);
   });
 
   it("tabela desconhecida dá 404", async () => {

@@ -80,3 +80,6 @@ cos_phi;por_carga;;;não RTIEBT;falta: perguntar ao formador
 pratica_disjuntor;iluminacao;10;A;prática de projeto (não RTIEBT) — confirmar com formador;calibre habitual; o RTIEBT só exige IB ≤ In ≤ Iz (433.2)
 pratica_disjuntor;tomadas;16;A;prática de projeto (não RTIEBT) — confirmar com formador;idem
 pratica_disjuntor;maquinas_lavar;16;A;prática de projeto (não RTIEBT) — confirmar com formador;idem; circuito dedicado por máquina
+pratica_cablagem;fator_tracado;1,3;×;prática (não RTIEBT) — confirmar com formador;metros de cabo = distância em linha reta QE → ponto × fator + descidas
+pratica_cablagem;altura_tomadas;0,3;m;prática (não RTIEBT) — confirmar com formador;descida desde o teto = pé-direito − altura
+pratica_cablagem;altura_interruptores;1,1;m;prática (não RTIEBT) — confirmar com formador;descida desde o teto = pé-direito − altura

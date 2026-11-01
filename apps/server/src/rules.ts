@@ -79,6 +79,22 @@ function customRoomTypeCodes(db: Db, exceptId?: string): string[] {
     .filter((c): c is string => typeof c === "string" && c.length > 0);
 }
 
+/** Códigos de Tipos de circuito (opções da coluna Circuito em Defaults por divisão). */
+function circuitTypeCodes(db: Db, exceptId?: string): string[] {
+  const rows = db.prepare("SELECT id, values_json FROM rules WHERE table_id = 'tipos_circuito'").all() as { id: string; values_json: string }[];
+  return rows
+    .filter((r) => r.id !== exceptId)
+    .map((r) => (JSON.parse(r.values_json) as RuleValues).codigo)
+    .filter((c): c is string => typeof c === "string" && c.length > 0);
+}
+
+/** Linhas de Defaults por divisão que usam um código de circuito. */
+function circuitTypeUsage(db: Db, code: string): number {
+  return (db.prepare("SELECT values_json FROM rules WHERE table_id = 'defaults_divisao'").all() as { values_json: string }[]).filter(
+    (r) => (JSON.parse(r.values_json) as RuleValues).circuito === code,
+  ).length;
+}
+
 /** Onde um tipo de divisão está a ser usado (defaults e divisões já desenhadas). */
 export function roomTypeUsage(db: Db, code: string): string[] {
   const out: string[] = [];
@@ -103,13 +119,29 @@ function cleanValues(db: Db, tableId: RuleTableId, raw: Record<string, unknown>,
   const out: RuleValues = {};
   const errors: string[] = [];
   for (const col of def.columns) {
-    const options = col.dynamicOptions === "room_types" ? [...ROOM_TYPES, ...customRoomTypeCodes(db)] : col.options;
+    const options =
+      col.dynamicOptions === "room_types"
+        ? [...ROOM_TYPES, ...customRoomTypeCodes(db)]
+        : col.dynamicOptions === "circuit_types"
+          ? circuitTypeCodes(db)
+          : col.options;
     const r = parseCell(col, raw[col.key], options);
     if (r.ok) out[col.key] = r.value;
     else errors.push(r.error);
   }
   if (errors.length) throw new HttpError(400, errors.join("; "));
   if (tableId === "tipos_divisao") checkRoomType(db, out, rowId, previous);
+  if (tableId === "tipos_circuito") {
+    // o código liga os defaults ao circuito: em uso, não muda (nem pode repetir outro)
+    const prev = previous?.codigo;
+    if (typeof prev === "string" && prev && prev !== out.codigo) {
+      const n = circuitTypeUsage(db, prev);
+      if (n) throw new HttpError(409, `O código "${prev}" está em uso em ${n} linha(s) de Defaults por divisão e não pode mudar.`);
+    }
+    if (typeof out.codigo === "string" && out.codigo && circuitTypeCodes(db, rowId).includes(out.codigo)) {
+      throw new HttpError(409, `Código: já existe um tipo de circuito "${out.codigo}".`);
+    }
+  }
   if (tableId === "defaults_divisao" && out.por === null) out.por = "divisao";
   return out;
 }
@@ -331,6 +363,12 @@ export function registerRuleRoutes(router: Router, db: Db, seedDir?: string) {
         const code = row ? (JSON.parse(row.values_json) as RuleValues).codigo : null;
         const used = typeof code === "string" && code ? roomTypeUsage(db, code) : [];
         if (used.length) throw new HttpError(409, `Tipo em uso, não pode ser apagado: ${used.join("; ")}.`, { used });
+      }
+      if (t === "tipos_circuito") {
+        const row = get(params.id!);
+        const code = row ? (JSON.parse(row.values_json) as RuleValues).codigo : null;
+        const n = typeof code === "string" && code ? circuitTypeUsage(db, code) : 0;
+        if (n) throw new HttpError(409, `Circuito "${code}" em uso em ${n} linha(s) de Defaults por divisão: não pode ser apagado.`);
       }
       const r = db.prepare("DELETE FROM rules WHERE id = ? AND table_id = ?").run(params.id!, t);
       if (Number(r.changes) !== 1) throw new HttpError(404, "Regra não encontrada.");

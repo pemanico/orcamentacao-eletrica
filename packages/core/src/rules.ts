@@ -21,7 +21,7 @@ export interface ColumnDef {
   max?: number;
   width?: number;
   /** enum cujas opções incluem dados do utilizador (ex.: tipos de divisão criados em Regras) */
-  dynamicOptions?: "room_types";
+  dynamicOptions?: "room_types" | "circuit_types";
 }
 
 export interface RuleTableDef {
@@ -47,6 +47,15 @@ export const RULE_TABLE_IDS = ["tipos_divisao", "defaults_divisao", "tipos_circu
 export type RuleTableId = (typeof RULE_TABLE_IDS)[number];
 
 export const CIRCUIT_KINDS = ["tomadas", "iluminacao", "dedicado", "estores"] as const;
+
+/**
+ * Âmbito de um tipo de circuito (F3): "divisao" = um circuito por divisão (ex.: tomadas, um por
+ * quarto); "todas" (ou vazio) = um circuito para todas as divisões desse tipo (ex.: iluminação
+ * das casas de banho). Em ambos, acima do máximo de pontos o circuito divide-se.
+ */
+export const CIRCUIT_SCOPES = ["todas", "divisao"] as const;
+export type CircuitScope = (typeof CIRCUIT_SCOPES)[number];
+export const CIRCUIT_SCOPE_LABEL: Record<CircuitScope, string> = { todas: "um para todas", divisao: "um por divisão" };
 
 /** Base da quantidade nos defaults por divisão. Vazio conta como "divisao". */
 export const QUANTITY_BASES = ["divisao", "m2", "m", "janela"] as const;
@@ -102,6 +111,8 @@ export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
       { key: "por", label: "Por", kind: "enum", options: QUANTITY_BASES, width: 150 },
       { key: "cada", label: "Cada", kind: "number", unit: "m² ou m", min: 0.5, max: 100, width: 90 },
       { key: "minimo", label: "Mín.", kind: "integer", min: 0, max: 50, width: 70 },
+      // F3: tipo de circuito do elemento (código de Tipos de circuito)
+      { key: "circuito", label: "Circuito", kind: "enum", dynamicOptions: "circuit_types", width: 150 },
     ],
   },
   tipos_circuito: {
@@ -118,6 +129,7 @@ export const RULE_TABLES: Record<RuleTableId, RuleTableDef> = {
       { key: "disjuntor_A", label: "Disjuntor", kind: "number", unit: "A", required: true, min: 1, max: 125, width: 85 },
       { key: "n_condutores", label: "Condutores", kind: "integer", required: true, min: 2, max: 5, width: 90 },
       { key: "max_pontos", label: "Máx. pontos", kind: "integer", min: 1, max: 50, width: 90 },
+      { key: "ambito", label: "Âmbito", kind: "enum", options: CIRCUIT_SCOPES, width: 140 },
       { key: "diferencial", label: "Diferencial", kind: "text", required: true, width: 120 },
     ],
   },

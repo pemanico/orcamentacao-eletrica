@@ -388,6 +388,14 @@ describe("F1 — planta", () => {
     const divs = await page.locator("tr.rule-row").getByLabel("Divisão").all();
     assert.ok(divs.length >= 8);
     for (const d of divs) assert.equal(await d.inputValue(), "cozinha");
+    // F3: coluna Circuito com os códigos de Tipos de circuito; gravar e voltar a ler
+    const circ = page.locator("tr.rule-row").first().getByLabel("Circuito");
+    assert.equal(await circ.locator("option", { hasText: "C6 — forno" }).count(), 1);
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/rules/defaults_divisao/") && r.request().method() === "PUT"),
+      circ.selectOption("C6"),
+    ]);
+    assert.equal(await circ.inputValue(), "C6");
 
     // só a cozinha por aprovar: a caixa do cabeçalho seleciona apenas essas
     await page.getByLabel("Só por aprovar").check();

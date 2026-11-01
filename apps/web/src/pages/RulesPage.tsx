@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CIRCUIT_KINDS,
+  CIRCUIT_SCOPE_LABEL,
+  type CircuitScope,
   LOAD_LABEL,
   QUANTITY_BASE_LABEL,
   type QuantityBase,
@@ -24,8 +26,13 @@ import { api } from "../api";
 import { RULES_CHANGED, Shell } from "../Shell";
 import { useRoomTypes } from "../roomTypes";
 
-const optionLabel = (col: ColumnDef, v: string, catalog: RoomTypeInfo[]) => {
+/** Tipos de circuito para a coluna Circuito (F3): código e agrupamento. */
+type CircuitOption = { code: string; label: string };
+
+const optionLabel = (col: ColumnDef, v: string, catalog: RoomTypeInfo[], circuits: CircuitOption[] = []) => {
   if (col.key === "divisao" || col.key === "defaults_como") return roomTypeShort(catalog, v);
+  if (col.key === "circuito") return circuits.find((c) => c.code === v)?.label ?? v;
+  if (col.key === "ambito") return CIRCUIT_SCOPE_LABEL[v as CircuitScope] ?? v;
   if (col.key === "carga") return LOAD_LABEL[v as LoadKind] ?? v;
   if (col.key === "por") return QUANTITY_BASE_LABEL[v as QuantityBase] ?? v;
   if ((CIRCUIT_KINDS as readonly string[]).includes(v)) return v === "iluminacao" ? "iluminação" : v;
@@ -51,6 +58,20 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
   const [roomFilter, setRoomFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { catalog } = useRoomTypes();
+  const [circuits, setCircuits] = useState<CircuitOption[]>([]);
+  const needsCircuits = def.columns.some((c) => c.dynamicOptions === "circuit_types");
+  useEffect(() => {
+    if (!needsCircuits) return;
+    api.listRules("tipos_circuito").then(
+      (rs) =>
+        setCircuits(
+          rs
+            .filter((r) => typeof r.values.codigo === "string" && r.values.codigo)
+            .map((r) => ({ code: String(r.values.codigo), label: `${r.values.codigo} — ${r.values.agrupamento ?? ""}`.replace(/ — $/, "") })),
+        ),
+      () => {},
+    );
+  }, [needsCircuits]);
   const [fillPlan, setFillPlan] = useState<ReferenceFillPlan | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk] = useState(false);
@@ -356,6 +377,7 @@ export function RulesPage({ tableId }: { tableId: RuleTableId }) {
                       tableId={tableId}
                       row={r}
                       catalog={catalog}
+                      circuits={circuits}
                       onSaved={replace}
                       onDelete={() => removeRow(r.id)}
                       selected={selected.has(r.id)}
@@ -432,6 +454,7 @@ function RuleRowEditor({
   tableId,
   row,
   catalog,
+  circuits,
   onSaved,
   onDelete,
   selected,
@@ -440,6 +463,7 @@ function RuleRowEditor({
   tableId: RuleTableId;
   row: RuleRow;
   catalog: RoomTypeInfo[];
+  circuits: CircuitOption[];
   onSaved: (r: RuleRow) => void;
   onDelete: () => void;
   selected: boolean;
@@ -483,9 +507,9 @@ function RuleRowEditor({
                 onChange={(e) => save({ values: { [c.key]: e.target.value || null } })}
               >
                 <option value="">—</option>
-                {(c.dynamicOptions === "room_types" ? catalog.map((t) => t.code) : c.options!).map((o) => (
+                {(c.dynamicOptions === "room_types" ? catalog.map((t) => t.code) : c.dynamicOptions === "circuit_types" ? circuits.map((x) => x.code) : c.options!).map((o) => (
                   <option key={o} value={o}>
-                    {optionLabel(c, o, catalog)}
+                    {optionLabel(c, o, catalog, circuits)}
                   </option>
                 ))}
               </select>

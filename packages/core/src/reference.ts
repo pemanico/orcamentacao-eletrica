@@ -42,6 +42,10 @@ export const RESISTIVITY_PARAM = "resistividade do cobre";
 export const BREAKER_PARAM_PREFIX = "calibre de disjuntor";
 export const breakerParam = (amps: number) => `${BREAKER_PARAM_PREFIX} ${amps} A`;
 const BREAKER_SERIES = [6, 10, 16, 20, 25, 32, 40, 50, 63];
+/** F3: estimativa de metros de cabo (prática, não RTIEBT) */
+export const TRACE_FACTOR_PARAM = "fator de traçado";
+export const SOCKET_HEIGHT_PARAM = "altura de montagem — tomadas";
+export const SWITCH_HEIGHT_PARAM = "altura de montagem — interruptores";
 
 /** Secções mínimas do RTIEBT 801.5.8 por natureza da carga. */
 const MIN_SECTION_KEY: Partial<Record<LoadKind, string>> = {
@@ -87,6 +91,9 @@ const NEW_PARAMETERS: { ref: RefKey; parametro: string }[] = [
   { ref: ["queda_tensao", "outros_usos_rede_publica"], parametro: "queda de tensão máx. — outros usos" },
   { ref: ["constantes", "resistividade_cobre"], parametro: RESISTIVITY_PARAM },
   ...BREAKER_SERIES.map((c) => ({ ref: ["calibre_disjuntor", String(c)] as RefKey, parametro: breakerParam(c) })),
+  { ref: ["pratica_cablagem", "fator_tracado"], parametro: TRACE_FACTOR_PARAM },
+  { ref: ["pratica_cablagem", "altura_tomadas"], parametro: SOCKET_HEIGHT_PARAM },
+  { ref: ["pratica_cablagem", "altura_interruptores"], parametro: SWITCH_HEIGHT_PARAM },
 ];
 
 /** Tabelas onde o botão "Preencher com referência" faz alguma coisa. */
