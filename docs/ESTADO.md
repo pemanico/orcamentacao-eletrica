@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-11-01 · commit `558c4af` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-11-01 · commit `5ff87e7` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
