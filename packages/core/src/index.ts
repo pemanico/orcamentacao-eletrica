@@ -15,3 +15,4 @@ export * from "./sizing";
 export * from "./defaults";
 export * from "./proposal";
 export * from "./points";
+export * from "./placement";

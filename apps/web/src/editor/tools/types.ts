@@ -9,10 +9,10 @@ import type { ReactNode } from "react";
 import type { FloorState, Point, ScaleCalibration, SnapResult, Wall } from "@orc/core";
 
 /** Elemento selecionado no editor. */
-export type Selection = { kind: "wall" | "opening" | "room"; id: string } | null;
+export type Selection = { kind: "wall" | "opening" | "room" | "point"; id: string } | null;
 
 /** Arrasto de uma pega (o Editor aplica-o; a ferramenta Selecionar inicia-o). */
-export type HandleDrag = { kind: "wall-a" | "wall-b"; id: string } | { kind: "room-v"; id: string; index: number };
+export type HandleDrag = { kind: "wall-a" | "wall-b" | "point"; id: string } | { kind: "room-v"; id: string; index: number };
 
 export interface ToolContext {
   state: FloorState;
@@ -45,6 +45,8 @@ export interface ToolContext {
   setSelection: (s: Selection) => void;
   setMessage: (m: string | null) => void;
   openCalibration: (a: Point, b: Point) => void;
+  /** ferramenta Ponto: elemento escolhido na paleta do painel (null = nenhum) */
+  pointElement: string | null;
   finishRoom: (poly: Point[]) => void;
 
   /** Selecionar: arrastar o fundo move a vista; um clique sem arrasto seleciona `click` */

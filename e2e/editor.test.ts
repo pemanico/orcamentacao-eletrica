@@ -30,6 +30,7 @@ const dataDir = mkdtempSync(join(tmpdir(), "orc-e2e-"));
 const db = openDb(join(dataDir, "e2e.db"));
 const server = buildApp({ db, dataDir, webDist: join(root, "apps/web/dist"), rulesSeedDir: join(root, "regras") });
 let base = "";
+let floorUrl = "";
 let browser: Browser;
 let page: Page;
 
@@ -107,6 +108,7 @@ describe("F1 — planta", () => {
     await page.locator('input[type="file"]').setInputFiles(join(fixtures, "planta_t2_1-100.pdf"));
     await page.getByRole("button", { name: "Importar" }).click();
     await page.waitForURL(/#\/piso\//);
+    floorUrl = page.url();
     await page.locator("svg.canvas image").waitFor();
     await page.getByText(/^Por calibrar\./).waitFor();
   });
@@ -329,7 +331,8 @@ describe("F1 — planta", () => {
     assert.equal(await c1.getByLabel("Secção").inputValue(), "", "a pré-visualização não grava");
     await preview.getByRole("button", { name: "Aplicar" }).click();
     await page.getByTestId("fill-done").waitFor();
-    assert.equal(await c1.getByLabel("Secção").inputValue(), "2,5");
+    // a tabela recarrega depois da mensagem: espera pelo valor em vez de o ler logo
+    await expectEventually(() => c1.getByLabel("Secção").inputValue(), "2,5");
     assert.equal(await c1.getByLabel("Disjuntor").inputValue(), "16", "tomadas: calibre de prática");
     assert.match(await c1.getByLabel("Fonte").inputValue(), /RTIEBT 801\.5\.8/);
     if (shots) await page.screenshot({ path: join(shots, "regras-referencia.png") });
@@ -393,6 +396,58 @@ describe("F1 — planta", () => {
     await page.getByTestId("bulk-bar").getByText(`${n} selecionada(s)`, { exact: true }).waitFor();
     await page.getByTestId("bulk-bar").getByRole("button", { name: "Limpar seleção" }).click();
     await page.getByLabel("Filtrar por divisão").selectOption("");
+  });
+
+  it("F2: propor pontos a partir dos defaults aprovados e aprová-los", async () => {
+    await page.goto(floorUrl);
+    await page.locator("svg.canvas image").waitFor();
+    const panel = page.locator(".points-panel");
+    await panel.getByRole("button", { name: "Propor pontos" }).click();
+    const summary = await panel.getByTestId("points-summary").textContent();
+    const added = Number(/^(\d+) propostos · 0 substituídos · 0 mantidos/.exec(summary ?? "")?.[1]);
+    assert.ok(added >= 5, `esperava vários pontos propostos: ${summary}`);
+    assert.equal(await page.locator("svg.canvas g.point").count(), added);
+    if (shots) await page.screenshot({ path: join(shots, "pontos.png") });
+
+    // pontos só se aprovam com a planta aprovada
+    assert.equal(await panel.getByRole("button", { name: "Aprovar pontos" }).isDisabled(), true);
+    await page.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
+    await page.getByRole("button", { name: "Aprovar piso" }).click();
+    await page.getByText(/^Aprovado em/).waitFor();
+    await panel.getByRole("button", { name: "Aprovar pontos" }).click();
+    await panel.getByText(/^Pontos aprovados em/).waitFor();
+  });
+
+  it("F2: mover um ponto passa-o a ajustado e só retira a aprovação dos pontos", async () => {
+    await page.keyboard.press("v");
+    const box = (await page.locator("svg.canvas g.point").first().boundingBox())!;
+    const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 25, y + 25, { steps: 5 });
+    await page.mouse.up();
+    const panel = page.locator(".points-panel");
+    await panel.getByText(/1 ajustados/).waitFor();
+    await panel.getByRole("button", { name: "Aprovar pontos" }).waitFor();
+    await page.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
+    await page.getByText(/^Aprovado em/).waitFor(); // a planta continua aprovada
+  });
+
+  it("F2: ferramenta Ponto põe à mão dentro de uma divisão; fora, recusa", async () => {
+    const panel = page.locator(".points-panel");
+    const before = await page.locator("svg.canvas g.point").count();
+    await panel.getByLabel("Elemento a colocar").selectOption("tomada_rede");
+    await page.locator(".tool.active").getByText("Ponto").waitFor();
+    await clickAt(at(1, 1));
+    await panel.getByText(/1 à mão/).waitFor();
+    assert.equal(await page.locator("svg.canvas g.point").count(), before + 1);
+    await clickAt(at(-3, -3));
+    await page.getByRole("alert").getByText(/Clica dentro de uma divisão/).waitFor();
+
+    // voltar a propor mantém o ajustado e o posto à mão
+    await panel.getByRole("button", { name: "Propor pontos" }).click();
+    await panel.getByTestId("points-summary").getByText(/ substituídos · 2 mantidos/).waitFor();
+    await panel.getByText(/1 ajustados · 1 à mão/).waitFor();
   });
 
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {

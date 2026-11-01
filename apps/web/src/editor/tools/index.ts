@@ -6,9 +6,10 @@ import { porta, janela } from "./abertura";
 import { calibrar } from "./calibrar";
 import { divisao } from "./divisao";
 import { parede } from "./parede";
+import { ponto } from "./ponto";
 import { selecionar } from "./selecionar";
 
-export const TOOLS = [selecionar, calibrar, parede, porta, janela, divisao] as const;
+export const TOOLS = [selecionar, calibrar, parede, porta, janela, divisao, ponto] as const;
 
 export type Tool = (typeof TOOLS)[number]["id"];
 

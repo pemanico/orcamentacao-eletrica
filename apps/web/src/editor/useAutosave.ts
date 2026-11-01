@@ -12,6 +12,7 @@ type Meta = { name: string; ceilingHeightM: number };
  */
 export function useAutosave(floor: Floor, state: FloorState, meta: Meta, setMessage: (m: string | null) => void) {
   const [approvedAt, setApprovedAt] = useState(floor.approvedAt);
+  const [pointsApprovedAt, setPointsApprovedAt] = useState(floor.pointsApprovedAt ?? null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("guardado");
   const revRef = useRef(floor.rev);
   const latest = useRef({ state, meta });
@@ -36,6 +37,7 @@ export function useAutosave(floor: Floor, state: FloorState, meta: Meta, setMess
       revRef.current = r.rev;
       savedRef.current = snapshot;
       setApprovedAt(r.approvedAt);
+      setPointsApprovedAt(r.pointsApprovedAt ?? null);
       ok = true;
     } catch (err) {
       setSaveStatus(err instanceof ApiError && err.status === 409 ? "conflito" : "erro");
@@ -80,5 +82,17 @@ export function useAutosave(floor: Floor, state: FloorState, meta: Meta, setMess
     }
   };
 
-  return { saveStatus, approvedAt, approve };
+  /** Aprovar os pontos (F2): grava primeiro; o servidor exige a planta aprovada. */
+  const approvePoints = async () => {
+    setMessage(null);
+    if (!(await flush())) return;
+    try {
+      const r = await api.approvePoints(floor.id);
+      setPointsApprovedAt(r.pointsApprovedAt);
+    } catch (err) {
+      setMessage((err as Error).message);
+    }
+  };
+
+  return { saveStatus, approvedAt, approve, pointsApprovedAt, approvePoints };
 }

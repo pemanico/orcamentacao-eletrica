@@ -47,6 +47,7 @@ export function EditorPanel({
   issues,
   approvedAt,
   approve,
+  pointsPanel,
 }: {
   sourcePanel?: ReactNode;
   meta: Meta;
@@ -71,6 +72,8 @@ export function EditorPanel({
   issues: Issue[];
   approvedAt: string | null;
   approve: () => void;
+  /** secção Pontos (F2) */
+  pointsPanel?: ReactNode;
 }) {
   return (
   <aside className="panel">
@@ -250,6 +253,7 @@ export function EditorPanel({
         </button>
       )}
     </section>
+    {pointsPanel}
   </aside>
   );
 }

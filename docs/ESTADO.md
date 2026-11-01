@@ -113,12 +113,35 @@ confirmar).
   aviso). PUT: mexer só nos pontos retira só a aprovação dos pontos; planta, nome ou
   pé-direito retiram as duas. DTO com `pointsApprovedAt` e `pointIssues`. Apagar uma divisão
   no editor apaga os pontos dela. Sem UI de pontos ainda.
+- **F2 passo 4 — colocação e ferramenta Ponto** (2026-11-01):
+  - core `placement.ts`: `placementKind` pelo código do elemento (`*luz*`/`foco` → teto;
+    `interruptor*`/`comutad*` → porta; `estore_motor` → janela; `interruptor_estore` → junto à
+    janela; resto → parede); `placeRoom` (luzes ao centro ou grelha; interruptor 15 cm depois
+    do batente do lado do fecho, 15 cm para dentro, os que sobram vão para as paredes; motor de
+    estore na janela, comando 20 cm ao lado; parede: espalhados pelo contorno, 30 cm dos cantos
+    e de cada lado dos vãos, intercalando elementos); `proposePoints` (tira os auto, mantém
+    ajustados/manuais e conta-os, coloca o que falta; devolve propostos/substituídos/mantidos);
+    `roomAt` (divisão mais pequena que contém o ponto).
+  - web: ferramenta **Ponto** (tecla E, `tools/ponto.tsx`) com o elemento escolhido em
+    "Elemento a colocar" (elementos dos defaults aprovados); clique fora de divisão recusado.
+    Símbolos em `editor/symbols.tsx` (**simbologia americana**: tomada = círculo com duas
+    linhas + abreviatura das dedicadas, luz = círculo com cruz, foco = R, interruptor S/S3,
+    comando de estore SM, motor M, rede = triângulo, TV). Em Selecionar arrasta-se um ponto
+    (auto → ajustado; largado noutra divisão muda de divisão). Secção **Pontos** no painel
+    (`PointsPanel.tsx`): Propor pontos com resumo e avisos (tipos sem regras, regras por
+    aprovar), contagens por origem, ponto selecionado, validação, **Aprovar pontos**.
+  - e2e: propor e aprovar, mover só retira a aprovação dos pontos, ferramenta Ponto, voltar a
+    propor mantém ajustados/manuais. Corrigido teste instável das Regras (lia a célula antes
+    de a tabela recarregar).
+  - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
+    não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
+    mobiliário.
 - **Dados**: SQLite em `data/orcamentacao.db`, autosave, cópias de segurança, página Dados.
 
 ## Pendente (por ordem)
 
 0. **Plano da F2 aprovado (2026-11-01)** — B com A dentro (ele leva a planta com pontos ao
-   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso (feito); 3) passo 2b (feito); 4) ferramenta "ponto" + "Propor pontos"; 5) painel previstos vs colocados.
+   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso (feito); 3) passo 2b (feito); 4) ferramenta ponto + Propor pontos (feito); 4) ferramenta "ponto" + "Propor pontos"; 5) painel previstos vs colocados.
    Decisões dele ("ok"): colocação — luzes ao centro (grelha se por m²), tomadas pelas paredes
    fora das aberturas, interruptor junto à porta do lado do fecho, comando de estore junto à
    janela; voltar a propor regenera só os automáticos nunca mexidos, mantém os movidos/manuais
@@ -204,7 +227,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 73, servidor 39, e2e 32; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2 e 3 mexeram em `api.ts`, `Editor.tsx` e `editor/tools/`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
+  `npm run test:e2e`. Estado dos testes: core 81, servidor 39, e2e 35; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2–4 mexeram em `api.ts`, `Editor.tsx`, `editor/tools/`, `PointsPanel.tsx`, `symbols.tsx`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele

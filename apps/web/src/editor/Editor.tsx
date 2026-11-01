@@ -10,6 +10,7 @@ import {
   polygonArea,
   polygonCentroid,
   projectOnSegment,
+  roomAt,
   unitsToMeters,
   validateFloor,
   type FloorState,
@@ -25,6 +26,8 @@ import { formatM, openingGeometry } from "./draw";
 import { roomColor, useRoomTypes } from "../roomTypes";
 import { useHistory } from "./useHistory";
 import { CalibrationDialog, RoomDialog } from "./dialogs";
+import { PointsPanel } from "./PointsPanel";
+import { PointSymbol } from "./symbols";
 import { EditorPanel } from "./EditorPanel";
 import { TOOLS, toolById, type HandleDrag, type Selection, type Tool, type ToolContext } from "./tools";
 import { useAutosave } from "./useAutosave";
@@ -64,6 +67,7 @@ export function Editor({
   const roomTypes = useRoomTypes();
   const [message, setMessage] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = usePref("orc.painel", true);
+  const [pointElement, setPointElement] = useState<string | null>(null);
   const [hintOpen, setHintOpen] = usePref("orc.ajuda", true);
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -152,6 +156,7 @@ export function Editor({
         };
       }
       if (selection.kind === "opening") return { ...s, openings: s.openings.filter((o) => o.id !== selection.id) };
+      if (selection.kind === "point") return { ...s, points: s.points.filter((p) => p.id !== selection.id) };
       // os pontos da divisão vão com ela (F2)
       return { ...s, rooms: s.rooms.filter((r) => r.id !== selection.id), points: s.points.filter((p) => p.roomId !== selection.id) };
     });
@@ -204,6 +209,7 @@ export function Editor({
     setSelection,
     setMessage,
     openCalibration: (a, b) => setCalibDialog({ a, b }),
+    pointElement,
     finishRoom,
     startPan: (click) => {
       if (!pointer) return;
@@ -241,6 +247,19 @@ export function Editor({
       const s = snapPoint(raw, null);
       setCursor(s);
       setPreview(() => {
+        if (drag.kind === "point") {
+          // mover um ponto proposto passa-o a "ajustado" (voltar a propor já não o substitui);
+          // largado noutra divisão, muda de divisão
+          const p = raw;
+          return {
+            ...state,
+            points: state.points.map((q) =>
+              q.id === drag.id
+                ? { ...q, x: p.x, y: p.y, roomId: roomAt(state.rooms, p)?.id ?? q.roomId, origem: q.origem === "auto" ? "ajustado" : q.origem }
+                : q,
+            ),
+          };
+        }
         if (drag.kind === "room-v") {
           return {
             ...state,
@@ -322,12 +341,13 @@ export function Editor({
   });
 
   // ---------------------------------------------------------------- gravação automática e aprovação
-  const { saveStatus, approvedAt, approve } = useAutosave(floor, state, meta, setMessage);
+  const { saveStatus, approvedAt, approve, pointsApprovedAt, approvePoints } = useAutosave(floor, state, meta, setMessage);
 
   // ---------------------------------------------------------------- render
   const selWall = selection?.kind === "wall" ? shown.walls.find((w) => w.id === selection.id) : undefined;
   const selOpening = selection?.kind === "opening" ? shown.openings.find((o) => o.id === selection.id) : undefined;
   const selRoom = selection?.kind === "room" ? shown.rooms.find((r) => r.id === selection.id) : undefined;
+  const selPoint = selection?.kind === "point" ? shown.points.find((p) => p.id === selection.id) : undefined;
   const lastDraft = draft[draft.length - 1];
   const scaleCheck = scale?.stampDenominator ? checkAgainstStamp(scale, scale.stampDenominator) : null;
   const cursorStyle = dragRef.current?.kind === "pan" || mods.space ? "grabbing" : handler.cursor ?? "crosshair";
@@ -465,6 +485,14 @@ export function Editor({
                 );
               })}
 
+            {/* pontos da instalação (F2) */}
+            {shown.points.map((p) => (
+              <g key={p.id} data-kind="point" data-id={p.id} className={`point origem-${p.origem} ${tool === "selecionar" ? "pickable" : "inert"}`}>
+                <circle cx={p.x} cy={p.y} r={sw(11)} fill="transparent" stroke="none" />
+                <PointSymbol elemento={p.elemento} x={p.x} y={p.y} sw={sw} selected={selPoint?.id === p.id} />
+              </g>
+            ))}
+
             {/* desenho da ferramenta ativa: pré-visualizações, cota de calibração */}
             {tool !== "selecionar" && handler.overlay?.({ ...toolContext(), state: shown })}
 
@@ -550,6 +578,28 @@ export function Editor({
         issues={issues}
         approvedAt={approvedAt}
         approve={() => void approve()}
+        pointsPanel={
+          <PointsPanel
+            state={state}
+            commit={commit}
+            catalog={roomTypes.catalog}
+            pointElement={pointElement}
+            choosePointElement={(e) => {
+              setPointElement(e);
+              if (e) selectTool("ponto");
+            }}
+            selPoint={selPoint}
+            select={(s) => {
+              setTool("selecionar");
+              setSelection(s);
+            }}
+            deleteSelection={deleteSelection}
+            setMessage={setMessage}
+            approvedAt={approvedAt}
+            pointsApprovedAt={pointsApprovedAt}
+            approvePoints={() => void approvePoints()}
+          />
+        }
       />
 
       {calibDialog && (

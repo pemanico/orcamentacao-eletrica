@@ -423,6 +423,43 @@ button:focus-visible {
   vector-effect: non-scaling-stroke;
   cursor: move;
 }
+/* pontos da instalação (F2) — simbologia em editor/symbols.tsx */
+.point-symbol circle,
+.point-symbol rect,
+.point-symbol polygon,
+.point-symbol path {
+  fill: #fff;
+  stroke: #b3261e;
+}
+.point-symbol path {
+  fill: none;
+}
+.point-label {
+  fill: #b3261e;
+  font-family: var(--mono);
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 0.25em;
+}
+.point.origem-auto .point-symbol {
+  opacity: 0.8;
+}
+.point-symbol.selected circle,
+.point-symbol.selected rect,
+.point-symbol.selected polygon,
+.point-symbol.selected path {
+  stroke: var(--accent);
+}
+.point-symbol.selected .point-label {
+  fill: var(--accent);
+}
+.point.pickable {
+  cursor: move;
+}
+.point-ghost {
+  pointer-events: none;
+}
 .snap rect,
 .snap circle,
 .snap polygon {

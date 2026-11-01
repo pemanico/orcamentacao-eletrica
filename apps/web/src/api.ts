@@ -139,6 +139,7 @@ export const api = {
     call<Floor>(`/api/floors/${id}`, json("PUT", data)),
   saveFloorSource: (id: string, meta: Partial<DxfSourceMeta>) => call<Floor>(`/api/floors/${id}/source`, json("PUT", meta)),
   approveFloor: (id: string) => call<Floor>(`/api/floors/${id}/approve`, { method: "POST" }),
+  approvePoints: (id: string) => call<Floor>(`/api/floors/${id}/points/approve`, { method: "POST" }),
   pdfUrl: (id: string) => `/api/floors/${id}/pdf`,
   info: () => call<DataInfo>("/api/info"),
   ruleSummary: () => call<{ id: RuleTableId; total: number; pending: number }[]>("/api/rules"),

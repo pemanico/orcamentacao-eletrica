@@ -5,7 +5,7 @@ export const selecionar: ToolHandler<"selecionar"> = {
   id: "selecionar",
   label: "Selecionar",
   key: "V",
-  help: "Clica para selecionar. Arrasta o fundo para mover a vista. Arrasta os pontos de um elemento selecionado para o corrigir. Delete apaga.",
+  help: "Clica para selecionar. Arrasta o fundo para mover a vista. Arrasta as pegas de um elemento selecionado para o corrigir, ou um ponto para o mover. Delete apaga.",
   cursor: "default",
 
   pointerDown(ctx, { target }) {
@@ -14,6 +14,14 @@ export const selecionar: ToolHandler<"selecionar"> = {
       const kind = handle.getAttribute("data-handle") as HandleDrag["kind"];
       const id = ctx.selection.id;
       ctx.startHandleDrag(kind === "room-v" ? { kind, id, index: Number(handle.getAttribute("data-index")) } : { kind, id });
+      return;
+    }
+    // um ponto arrasta-se logo (e fica selecionado), sem pegas
+    const pt = target.closest('[data-kind="point"]');
+    if (pt) {
+      const id = pt.getAttribute("data-id")!;
+      ctx.setSelection({ kind: "point", id });
+      ctx.startHandleDrag({ kind: "point", id });
       return;
     }
     // arrastar move a vista; um clique sem arrasto seleciona o que estiver por baixo
