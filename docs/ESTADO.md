@@ -171,10 +171,8 @@ confirmar).
    Parâmetros: ele diz que já preencheu calibres/ρ ("já está") — por confirmar C20 + 4 mm²
    sem "provisório" e se horas/preço da hora aprovados são reais ou placeholders.
 0b. **Por responder (2026-11-01):**
-   - "Preparar para a domótica" (pedido dele) — a domótica continua fora da app (decisão de
-     26/10); proposta: opção por projeto "Preparação para domótica" que liga regras. Falta ele
-     dizer o que é: (a) reserva no QE/ATI (F4), (b) tubo vazio ATI → divisões (F3/F5),
-     (c) neutro em todas as caixas de interruptor (mais cabo na iluminação).
+   - Domótica: **confirmado por ele (2026-11-01) — projeto à parte, sem preparação nesta app**
+     (o pedido de "preparar para a domótica" foi engano dele).
    - Resto da F2 segundo o plano: **contagens por divisão** (regras vs planta — proposto fazer,
      é o que a F5 precisa) e **questionário por divisão** (proposto cortar: a edição na planta
      já resolve os pedidos do cliente).
