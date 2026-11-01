@@ -27,7 +27,7 @@ import { roomColor, useRoomTypes } from "../roomTypes";
 import { useHistory } from "./useHistory";
 import { CalibrationDialog, RoomDialog } from "./dialogs";
 import { PointsPanel } from "./PointsPanel";
-import { PointSymbol } from "./symbols";
+import { PointSymbol, elementName } from "./symbols";
 import { EditorPanel } from "./EditorPanel";
 import { TOOLS, toolById, type HandleDrag, type Selection, type Tool, type ToolContext } from "./tools";
 import { useAutosave } from "./useAutosave";
@@ -38,6 +38,7 @@ import { angleDeg, distToLine, isTyping, uid } from "./util";
 type Drag = { kind: "pan"; startX: number; startY: number; tx: number; ty: number; click?: Selection | "none" } | HandleDrag;
 
 const SNAP_PX = 10;
+const ORIGIN_TEXT = { auto: "automático", ajustado: "ajustado à mão", manual: "posto à mão" } as const;
 
 export function Editor({
   floor,
@@ -487,7 +488,8 @@ export function Editor({
 
             {/* pontos da instalação (F2) */}
             {shown.points.map((p) => (
-              <g key={p.id} data-kind="point" data-id={p.id} className={`point origem-${p.origem} ${tool === "selecionar" ? "pickable" : "inert"}`}>
+              <g key={p.id} data-kind="point" data-id={p.id} className={`point origem-${p.origem} ${tool === "selecionar" ? "pickable" : ""}`}>
+                <title>{`${elementName(p.elemento)} — ${shown.rooms.find((r) => r.id === p.roomId)?.name ?? "sem divisão"} (${ORIGIN_TEXT[p.origem]})`}</title>
                 <circle cx={p.x} cy={p.y} r={sw(11)} fill="transparent" stroke="none" />
                 <PointSymbol elemento={p.elemento} x={p.x} y={p.y} sw={sw} selected={selPoint?.id === p.id} />
               </g>

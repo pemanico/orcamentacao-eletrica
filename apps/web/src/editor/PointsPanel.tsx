@@ -18,6 +18,7 @@ import { api } from "../api";
 import { RULES_CHANGED } from "../Shell";
 import type { Selection } from "./tools";
 import { uid } from "./util";
+import { elementName } from "./symbols";
 
 const ORIGIN_LABEL: Record<PointOrigin, string> = { auto: "automáticos", ajustado: "ajustados", manual: "à mão" };
 
@@ -63,7 +64,7 @@ export function PointsPanel({
   const defaults = useDefaults();
   const [summary, setSummary] = useState<string | null>(null);
   const approvedRows = (defaults ?? []).filter((r) => r.state === "aprovada");
-  const elements = [...new Set(approvedRows.map((r) => String(r.values.elemento ?? "").trim()).filter(Boolean))].sort();
+  const elements = [...new Set(approvedRows.map((r) => String(r.values.elemento ?? "").trim()).filter(Boolean))].sort((a, b) => elementName(a).localeCompare(elementName(b), "pt"));
   const issues = validatePoints(state);
   const roomName = (id: string) => state.rooms.find((r) => r.id === id)?.name ?? "—";
   const byOrigin = (o: PointOrigin) => state.points.filter((p) => p.origem === o).length;
@@ -101,7 +102,7 @@ export function PointsPanel({
           <option value="">—</option>
           {elements.map((el) => (
             <option key={el} value={el}>
-              {el}
+              {elementName(el)}
             </option>
           ))}
         </select>
@@ -122,7 +123,7 @@ export function PointsPanel({
         <div className="selection">
           <h3>Ponto</h3>
           <p>
-            {selPoint.elemento} · {roomName(selPoint.roomId)} <span className="muted">· {ORIGIN_LABEL[selPoint.origem]}</span>
+            {elementName(selPoint.elemento)} · {roomName(selPoint.roomId)} <span className="muted">· {ORIGIN_LABEL[selPoint.origem]}</span>
           </p>
           <button className="danger" onClick={deleteSelection}>
             Apagar ponto

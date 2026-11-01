@@ -133,6 +133,9 @@ confirmar).
   - e2e: propor e aprovar, mover só retira a aprovação dos pontos, ferramenta Ponto, voltar a
     propor mantém ajustados/manuais. Corrigido teste instável das Regras (lia a célula antes
     de a tabela recarregar).
+  - Pedido dele: **descrição ao passar o rato** por cima de cada ponto (`<title>` SVG, em
+    todas as ferramentas): nome por extenso (`elementName` em `symbols.tsx`), divisão e origem.
+    A lista "Elemento a colocar" usa os mesmos nomes.
   - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
     não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
     mobiliário.

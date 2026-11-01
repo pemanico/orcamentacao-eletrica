@@ -428,6 +428,8 @@ describe("F1 — planta", () => {
     await page.mouse.up();
     const panel = page.locator(".points-panel");
     await panel.getByText(/1 ajustados/).waitFor();
+    // ao passar por cima: elemento por extenso, divisão e origem
+    assert.match((await page.locator("svg.canvas g.point title").first().textContent()) ?? "", /^[A-ZÀ-Ú].+ — Sala e cozinha \((automático|ajustado à mão|posto à mão)\)$/);
     await panel.getByRole("button", { name: "Aprovar pontos" }).waitFor();
     await page.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
     await page.getByText(/^Aprovado em/).waitFor(); // a planta continua aprovada

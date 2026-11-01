@@ -20,6 +20,35 @@ const ABBR: Record<string, string> = {
   tomada_bomba_calor: "BC",
 };
 
+/** Nome por extenso dos elementos conhecidos; os outros: código com espaços. */
+const NAMES: Record<string, string> = {
+  tomada: "Tomada",
+  tomada_tv: "Tomada de TV",
+  tomada_rede: "Tomada de rede (RJ45)",
+  tomada_forno: "Tomada do forno",
+  tomada_placa: "Tomada da placa",
+  tomada_frigorifico: "Tomada do frigorífico",
+  tomada_exaustor: "Tomada do exaustor",
+  tomada_microondas: "Tomada do micro-ondas",
+  tomada_maquina_loica: "Tomada da máquina da loiça",
+  tomada_maquina_roupa: "Tomada da máquina da roupa",
+  tomada_bancada: "Tomada de bancada",
+  tomada_bomba_calor: "Tomada da bomba de calor",
+  ponto_luz: "Ponto de luz",
+  foco: "Foco encastrado",
+  interruptor: "Interruptor",
+  interruptor_comutado: "Comutador de escada",
+  interruptor_estore: "Comando de estore",
+  estore_motor: "Motor de estore",
+};
+
+export function elementName(code: string): string {
+  const known = NAMES[code.toLowerCase()];
+  if (known) return known;
+  const s = code.replace(/_/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function PointSymbol({ elemento, x, y, sw, selected }: { elemento: string; x: number; y: number; sw: (px: number) => number; selected?: boolean }) {
   const r = sw(7);
   const stroke = sw(selected ? 2.5 : 1.6);
