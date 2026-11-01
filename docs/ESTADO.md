@@ -139,6 +139,15 @@ confirmar).
   - Pedido dele: **Ctrl+C / Ctrl+V** de pontos — cópia onde está o rato (ou 50 cm ao lado se o
     rato estiver fora da planta), fica "manual" na divisão onde cai e selecionada; fora de uma
     divisão, recusa. Área de transferência interna (não a do sistema).
+  - Pedido dele: **planta de pontos com legenda** (`pages/PointsMapPage.tsx`, rota
+    `#/piso/:id/planta-pontos`, link no painel quando os pontos estão aprovados — **só com pontos
+    aprovados**, decisão dele). A3 horizontal; escala normalizada exata em que o piso cabe
+    (1:20…1:1000); planta do arquiteto esbatida, paredes, divisões a tracejado com nome, pontos;
+    legenda só com os elementos usados (símbolo, nome, quantidade contada na planta, total);
+    carimbo (projeto, cliente, morada, piso, escala, data, data de aprovação dos pontos,
+    "não é projeto elétrico"). PDF pelo "Imprimir → Guardar como PDF" do browser (`@page A3
+    landscape`, margens 0). Sem circuitos (F3) — ele aceitou. `floorPlan.ts`: carregador da
+    planta partilhado (EditorPage usa o `completeMeta` de lá).
   - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
     não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
     mobiliário.
@@ -233,7 +242,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 81, servidor 39, e2e 35; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2–4 mexeram em `api.ts`, `Editor.tsx`, `editor/tools/`, `PointsPanel.tsx`, `symbols.tsx`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
+  `npm run test:e2e`. Estado dos testes: core 81, servidor 39, e2e 36; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2–4 mexeram em `api.ts`, `Editor.tsx`, `editor/tools/`, `PointsPanel.tsx`, `symbols.tsx`, `PointsMapPage.tsx`, `floorPlan.ts`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele

@@ -6,7 +6,6 @@ import {
   parseDxf,
   upgradeLayerMeta,
   type DxfDrawing,
-  type DxfSourceMeta,
   type DxfUnit,
   type Region,
 } from "@orc/core";
@@ -17,9 +16,8 @@ import { Editor } from "../editor/Editor";
 import { DxfSetup } from "../editor/DxfSetup";
 import { LayerPanel } from "../editor/LayerPanel";
 import { Shell, type Crumb } from "../Shell";
+import { completeMeta } from "../floorPlan";
 
-const completeMeta = (m: Floor["sourceMeta"]): DxfSourceMeta | null =>
-  m && m.region && m.unit ? { region: m.region, unit: m.unit, hidden: m.hidden ?? [], snap: m.snap ?? [], layerVersion: m.layerVersion } : null;
 
 export function EditorPage({ floorId }: { floorId: string }) {
   const [floor, setFloor] = useState<Floor | null>(null);

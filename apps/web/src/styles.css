@@ -1264,3 +1264,127 @@ button.danger.solid {
 .rules-search {
   min-width: 180px;
 }
+
+/* planta de pontos (F2): folha A3 horizontal, para imprimir / guardar PDF */
+@page {
+  size: A3 landscape;
+  margin: 0;
+}
+.map-page {
+  background: #e9ecf1;
+  min-height: 100vh;
+  padding: 16px;
+}
+.map-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 auto 12px;
+  max-width: 420mm;
+}
+.sheet {
+  width: 420mm;
+  height: 297mm;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 10mm;
+  display: flex;
+  gap: 6mm;
+  overflow: hidden;
+}
+.sheet-drawing {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.3mm solid #222;
+  overflow: hidden;
+}
+.sheet-side {
+  width: 95mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6mm;
+  font-size: 9pt;
+}
+.sheet-side h2 {
+  font-size: 11pt;
+  margin: 0 0 2mm;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.map-legend,
+.map-stamp {
+  border: 0.3mm solid #222;
+  padding: 3mm;
+}
+.map-legend table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.map-legend td {
+  padding: 0.6mm 1mm;
+  border-bottom: 0.1mm solid #ccc;
+  vertical-align: middle;
+}
+.map-legend tfoot td {
+  font-weight: 700;
+  border-bottom: none;
+}
+.legend-symbol {
+  width: 13mm;
+}
+.map-stamp dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 1mm 3mm;
+  margin: 0;
+}
+.map-stamp dt {
+  color: #555;
+}
+.map-stamp dd {
+  margin: 0;
+  font-weight: 600;
+}
+.map-note {
+  font-size: 7.5pt;
+  color: #555;
+  margin: 2mm 0 0;
+}
+.map-wall {
+  stroke: #222;
+  stroke-linecap: round;
+}
+.map-room {
+  fill: none;
+  stroke: #888;
+  stroke-dasharray: 2 1;
+}
+.map-room-name {
+  fill: #333;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 0.3em;
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .map-page {
+    padding: 0;
+    background: #fff;
+  }
+  .sheet {
+    box-shadow: none;
+    margin: 0;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

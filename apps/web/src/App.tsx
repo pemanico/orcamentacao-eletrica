@@ -5,6 +5,7 @@ import { EditorPage } from "./pages/EditorPage";
 import { RulesPage } from "./pages/RulesPage";
 import { DataPage } from "./pages/DataPage";
 import { CalculatorPage } from "./pages/CalculatorPage";
+import { PointsMapPage } from "./pages/PointsMapPage";
 import { RULE_TABLE_IDS, type RuleTableId } from "@orc/core";
 
 /** Router por hash: #/ · #/projeto/:id · #/piso/:id */
@@ -30,6 +31,8 @@ export function App() {
   }
   if (hash === "#/dados") return <DataPage />;
   if (hash === "#/arquivados") return <ProjectsPage key="arq" archived />;
+  const pointsMap = /^#\/piso\/([\w-]+)\/planta-pontos$/.exec(hash);
+  if (pointsMap) return <PointsMapPage key={pointsMap[1]} floorId={pointsMap[1]!} />;
   if (floor) return <EditorPage key={floor[1]} floorId={floor[1]!} />;
   if (project) return <ProjectPage key={project[1]} projectId={project[1]!} />;
   return <ProjectsPage />;

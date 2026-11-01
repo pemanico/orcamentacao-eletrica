@@ -470,6 +470,27 @@ describe("F1 — planta", () => {
     await panel.getByText(/1 ajustados · 2 à mão/).waitFor();
   });
 
+  it("F2: planta de pontos com legenda, só com os pontos aprovados", async () => {
+    const panel = page.locator(".points-panel");
+    const total = await page.locator("svg.canvas g.point").count();
+    await page.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
+    await panel.getByRole("button", { name: "Aprovar pontos" }).click();
+    await panel.getByRole("link", { name: "Planta de pontos (imprimir)" }).click();
+    await page.waitForURL(/\/planta-pontos$/);
+    const legend = page.getByTestId("points-legend");
+    await legend.getByRole("row", { name: /Tomada de rede \(RJ45\) 2$/ }).waitFor();
+    assert.match((await legend.locator("tfoot").textContent()) ?? "", new RegExp(`Total de pontos${total}$`));
+    assert.match((await page.getByTestId("map-scale").textContent()) ?? "", /^1:\d+ \(A3\)$/);
+    assert.equal(await page.getByTestId("points-sheet").locator("svg.map-svg .point-symbol").count(), total);
+    if (shots) {
+      await page.setViewportSize({ width: 1650, height: 1250 });
+      await page.getByTestId("points-sheet").screenshot({ path: join(shots, "planta-pontos.png") });
+      await page.setViewportSize({ width: 1500, height: 950 });
+    }
+    await page.getByRole("link", { name: "← Voltar ao editor" }).click();
+    await page.locator("svg.canvas image").waitFor();
+  });
+
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {
     await page.locator(".menu").getByRole("link", { name: "Dados" }).click();
     await page.waitForURL(/#\/dados/);

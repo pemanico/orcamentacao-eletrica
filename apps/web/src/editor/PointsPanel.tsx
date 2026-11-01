@@ -35,6 +35,7 @@ function useDefaults() {
 }
 
 export function PointsPanel({
+  floorId,
   state,
   commit,
   catalog,
@@ -48,6 +49,7 @@ export function PointsPanel({
   pointsApprovedAt,
   approvePoints,
 }: {
+  floorId: string;
   state: FloorState;
   commit: (f: (s: FloorState) => FloorState) => void;
   catalog: readonly RoomTypeInfo[];
@@ -141,7 +143,12 @@ export function PointsPanel({
         </ul>
       )}
       {pointsApprovedAt ? (
-        <p className="ok">Pontos aprovados em {new Date(pointsApprovedAt).toLocaleString("pt-PT")}. Mexer nos pontos ou na planta retira a aprovação.</p>
+        <>
+          <p className="ok">Pontos aprovados em {new Date(pointsApprovedAt).toLocaleString("pt-PT")}. Mexer nos pontos ou na planta retira a aprovação.</p>
+          <a className="button" href={`#/piso/${floorId}/planta-pontos`}>
+            Planta de pontos (imprimir)
+          </a>
+        </>
       ) : (
         <>
           {!approvedAt && state.points.length > 0 && <p className="muted">Aprova primeiro a planta do piso.</p>}

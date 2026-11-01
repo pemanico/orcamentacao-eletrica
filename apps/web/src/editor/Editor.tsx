@@ -611,6 +611,7 @@ export function Editor({
         approve={() => void approve()}
         pointsPanel={
           <PointsPanel
+            floorId={floor.id}
             state={state}
             commit={commit}
             catalog={roomTypes.catalog}

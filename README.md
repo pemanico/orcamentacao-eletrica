@@ -125,6 +125,25 @@ marcadas.
 **Apagar um piso** (× na linha do piso) apaga a geometria traçada; o ficheiro só é apagado
 quando nenhum outro piso o usa. Bloqueado em projetos Adjudicados, Em obra ou Concluídos.
 
+## Pontos (F2)
+
+Com a planta do piso traçada, a secção **Pontos** do painel do editor:
+
+- **Propor pontos** coloca os pontos de cada divisão a partir dos defaults aprovados: luzes ao
+  centro (ou em grelha), tomadas pelo contorno fora das portas e janelas, interruptores junto à
+  porta do lado do fecho, motor e comando de estore na janela. Num open space, as regras "por
+  divisão" somam, as "por m²/m" repartem a área e as "por janela" contam cada janela uma vez.
+- Voltar a propor só substitui os pontos **automáticos**; os que moveste (**ajustados**) e os
+  postos à mão ficam e contam para a quantidade.
+- Ferramenta **Ponto** (E): escolhe o elemento em "Elemento a colocar" e clica dentro de uma
+  divisão. Em Selecionar, arrasta um ponto para o mover; **Ctrl+C / Ctrl+V** cola uma cópia onde
+  está o rato. Passar o rato por cima mostra o elemento, a divisão e a origem.
+- **Aprovar pontos** (precisa da planta aprovada). Mexer nos pontos retira só a aprovação dos
+  pontos; mexer na planta retira as duas.
+- **Planta de pontos (imprimir)**: folha A3 com a planta, os pontos, a legenda (elementos usados
+  e quantidades) e o carimbo. No browser, "Imprimir → Guardar como PDF", tamanho A3, margens
+  "Nenhuma". Simbologia americana.
+
 ## Projetos: estados, arquivar e apagar
 
 Cada projeto segue o workflow **Levantamento → Orçamento → Enviado → Adjudicado → Em obra →
