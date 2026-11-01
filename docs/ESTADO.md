@@ -100,8 +100,9 @@ confirmar).
   (801.5.3); "compartimento" não está definido (potência mínima 801.5.2.2).
 - **F2 passo 1 — proposta de quantidades** (`packages/core/src/proposal.ts`, 2026-11-01):
   `proposeRoom`/`proposeFloor`/`totalsByElement`. Só defaults aprovados; tipo do utilizador
-  sem linhas próprias usa as do tipo base (escritório → quarto); open space = **maior valor
-  por elemento, não a soma** (somar duplicava as regras por m²) — `contributions` guarda o
+  sem linhas próprias usa as do tipo base (escritório → quarto); open space = **"soma onde faz
+  sentido"** (decisão dele, 2026-11-01): "por divisão" soma; "por m²/m" reparte a área pelos
+  n tipos e soma; "por janela" conta cada janela uma vez (máximo). `contributions` guarda o
   valor de cada tipo; avisa tipos sem regras e lista as linhas por aprovar. Sem UI.
 - **F2 passo 2 — pontos no estado do piso** (2026-11-01): `FloorState.points`
   `{ id, roomId, elemento, x, y, origem: auto | ajustado | manual }` (auto = proposto e nunca
@@ -124,7 +125,7 @@ confirmar).
    e mostra a diferença; aprovação "pontos" separada da do piso (mexer nas paredes desaprova
    os pontos). **Simbologia americana** (decisão dele; ressalva: em PT lê-se IEC 60617 e a
    ANSI não tem schuko/comutador de lustre/estore) — o ponto guarda só o código do elemento,
-   o símbolo vem de uma tabela de mapeamento, trocável. Por confirmar: open space max vs soma.
+   o símbolo vem de uma tabela de mapeamento, trocável.
    Parâmetros: ele diz que já preencheu calibres/ρ ("já está") — por confirmar C20 + 4 mm²
    sem "provisório" e se horas/preço da hora aprovados são reais ou placeholders.
 1. **F2 desbloqueada (2026-11-01).** BD dele verificada: todas as regras aprovadas —
@@ -203,7 +204,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 72, servidor 39, e2e 32; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2 e 3 mexeram em `api.ts`, `Editor.tsx` e `editor/tools/`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
+  `npm run test:e2e`. Estado dos testes: core 73, servidor 39, e2e 32; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2 e 3 mexeram em `api.ts`, `Editor.tsx` e `editor/tools/`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele

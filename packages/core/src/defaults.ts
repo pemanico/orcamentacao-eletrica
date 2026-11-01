@@ -48,13 +48,17 @@ export function roomLengthM({ areaM2, perimeterM }: RoomMetrics): number {
   return disc > 0 ? (half + Math.sqrt(disc)) / 2 : half / 2;
 }
 
-export function defaultQuantity(values: RuleValues, room: RoomMetrics): number {
+/**
+ * `share` (0–1]: parte da divisão que cabe a esta regra. Num open space com n tipos, as regras
+ * por m² e por m aplicam-se a 1/n da área/comprimento (ver proposal.ts). Não mexe nas outras.
+ */
+export function defaultQuantity(values: RuleValues, room: RoomMetrics, share = 1): number {
   const qty = typeof values.quantidade === "number" ? values.quantidade : 0;
   const base = values.por ?? "divisao";
   const each = typeof values.cada === "number" && values.cada > 0 ? values.cada : null;
   if (base === "janela") return Math.max(typeof values.minimo === "number" ? values.minimo : 0, qty * (room.windows ?? 0));
   if (base === "divisao" || !each) return qty;
-  const measure = base === "m2" ? room.areaM2 : roomLengthM(room);
+  const measure = (base === "m2" ? room.areaM2 : roomLengthM(room)) * share;
   const min = typeof values.minimo === "number" ? values.minimo : qty;
   return Math.max(min, qty * Math.ceil(measure / each - 1e-9));
 }

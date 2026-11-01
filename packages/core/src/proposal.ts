@@ -9,9 +9,12 @@
  *   `pending`, para a UI avisar);
  * - um tipo do utilizador sem linhas próprias usa as do seu tipo base ("Usa os defaults de";
  *   o escritório usa as do quarto). Com linhas próprias, usa só as próprias;
- * - open space (vários tipos): por elemento fica o MAIOR valor entre os tipos, não a soma —
- *   somar duplicaria as regras por m² (a área é a da divisão inteira). Decisão por confirmar
- *   com o Ordep; `contributions` guarda o valor de cada tipo para a UI mostrar.
+ * - open space (vários tipos) — decisão do Ordep (2026-11-01), "soma onde faz sentido":
+ *   - "por divisão": soma (sala 4 tomadas + cozinha 3 = 7);
+ *   - "por m²" / "por m": a área/comprimento reparte-se pelos n tipos e soma-se
+ *     (30 m² sala + cozinha → 15 m² cada);
+ *   - "por janela": cada janela conta uma vez — o maior valor entre os tipos, não a soma.
+ *   `contributions` guarda o valor de cada tipo para a UI mostrar.
  */
 import { polygonArea, polygonPerimeter } from "./geometry";
 import { areaUnitsToM2, unitsToMeters } from "./scale";
@@ -68,7 +71,12 @@ export function proposeRoom(
   const typesWithoutRules: string[] = [];
   const pending: RoomProposal["pending"] = [];
 
-  for (const type of new Set(room.types)) {
+  const types = [...new Set(room.types)];
+  const share = 1 / Math.max(1, types.length);
+  /** por elemento: soma das regras que somam e maior valor das "por janela" */
+  const acc = new Map<string, { summed: number; perWindow: number }>();
+
+  for (const type of types) {
     const src = rulesTypeFor(type, defaults, catalog);
     const rows = defaults.filter((r) => r.values.divisao === src);
     const approved = rows.filter((r) => r.state === "aprovada");
@@ -80,13 +88,17 @@ export function proposeRoom(
         pending.push({ type, elemento, ruleId: r.id });
         continue;
       }
-      const q = defaultQuantity(r.values, metrics);
+      const q = defaultQuantity(r.values, metrics, share);
       const e = byElement.get(elemento) ?? { elemento, quantidade: 0, contributions: [] };
       e.contributions.push({ type, quantidade: q, ruleId: r.id });
-      e.quantidade = Math.max(e.quantidade, q);
       byElement.set(elemento, e);
+      const a = acc.get(elemento) ?? { summed: 0, perWindow: 0 };
+      if (r.values.por === "janela") a.perWindow = Math.max(a.perWindow, q);
+      else a.summed += q;
+      acc.set(elemento, a);
     }
   }
+  for (const [elemento, a] of acc) byElement.get(elemento)!.quantidade = a.summed + a.perWindow;
 
   const elements = [...byElement.values()].filter((e) => e.quantidade > 0).sort((a, b) => a.elemento.localeCompare(b.elemento));
   return { roomId: room.id, roomName: room.name, metrics, elements, typesWithoutRules, pending };

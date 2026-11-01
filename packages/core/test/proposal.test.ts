@@ -67,14 +67,22 @@ describe("F2 — proposta de quantidades por divisão", () => {
     assert.deepEqual(p.typesWithoutRules, ["adega"]);
   });
 
-  it("open space sala + cozinha (6×5 = 30 m²): maior valor por elemento, não a soma", () => {
+  it("open space sala + cozinha (6×5 = 30 m²): soma onde faz sentido", () => {
     const p = proposeRoom(room("oc", ["sala", "cozinha"], rect(1000, 1000, 600, 500)), state, defaults, catalog);
     const q = Object.fromEntries(p.elements.map((e) => [e.elemento, e.quantidade]));
-    assert.equal(q.tomada, 4); // max(4, 3)
-    assert.equal(q.ponto_luz, 5); // max(30/10 = 3, 30/6 = 5)
+    assert.equal(q.tomada, 7, "por divisão: 4 + 3");
+    assert.equal(q.ponto_luz, 5, "por m²: 15 m² cada → ⌈1,5⌉ + ⌈2,5⌉ = 2 + 3");
     assert.equal(q.tomada_forno, 1);
     assert.equal(p.elements.find((e) => e.elemento === "ponto_luz")?.contributions.length, 2);
     assert.equal(p.metrics.windows, 0);
+  });
+
+  it("open space com janelas: cada janela conta uma vez", () => {
+    const withWindows = [...defaults, row("sala", "estore_motor", 1, { por: "janela" })];
+    // quarto (tem estore por janela) + sala, 4×3 m com a janela da parede de cima
+    const p = proposeRoom(room("qs", ["quarto", "sala"]), state, withWindows, catalog);
+    assert.equal(p.metrics.windows, 1);
+    assert.equal(p.elements.find((e) => e.elemento === "estore_motor")?.quantidade, 1, "max, não 1 + 1");
   });
 
   it("piso inteiro e totais por elemento", () => {
