@@ -242,7 +242,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 81, servidor 39, e2e 36; typecheck limpo. **typecheck:web por correr no PC dele** (passos 2–4 mexeram em `api.ts`, `Editor.tsx`, `editor/tools/`, `PointsPanel.tsx`, `symbols.tsx`, `PointsMapPage.tsx`, `floorPlan.ts`; aqui não há @types/react — verificado só com stubs de React, sem erros fora dos stubs).
+  `npm run test:e2e`. Estado dos testes: core 81, servidor 39, e2e 36; typecheck limpo; **typecheck:web limpo no PC dele** (2026-11-01, sobre `116bfd8`).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele
