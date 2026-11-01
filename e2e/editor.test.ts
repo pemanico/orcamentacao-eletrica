@@ -64,6 +64,34 @@ async function clickAt(p: { x: number; y: number }) {
   await page.mouse.click(s.x, s.y);
 }
 
+/** Arrasta de um ponto a outro (coordenadas de página) com Alt premido: sem snap. */
+async function drag(from: { x: number; y: number }, to: { x: number; y: number }) {
+  const a = await screen(from);
+  const b = await screen(to);
+  await page.keyboard.down("Alt");
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 8 });
+  await page.mouse.up();
+  await page.keyboard.up("Alt");
+}
+
+/** Repete `read` até devolver `expected` (gravação automática com atraso). */
+async function expectEventually<T>(read: () => Promise<T>, expected: T, timeoutMs = 5000) {
+  const end = Date.now() + timeoutMs;
+  let last: T;
+  do {
+    last = await read();
+    try {
+      assert.deepEqual(last, expected);
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 150));
+    }
+  } while (Date.now() < end);
+  assert.deepEqual(last, expected);
+}
+
 describe("F1 — planta", () => {
   it("rejeita uma digitalização antes de enviar", async () => {
     await page.goto(base);
@@ -161,6 +189,46 @@ describe("F1 — planta", () => {
     await clickAt(at(11.5, 6.5)); // meio da parede diagonal
     await page.getByText("Comprimento: 4,24 m").waitFor();
     if (shots) await page.screenshot({ path: join(shots, "diagonal.png") });
+  });
+
+  it("arrastar a pega de uma parede muda o extremo; anular repõe", async () => {
+    // a parede diagonal do teste anterior está selecionada: pegas nos extremos
+    await page.getByText("Comprimento: 4,24 m").waitFor();
+    await drag(at(13, 5), at(13, 4)); // de (10,8) a (13,4) = 5 m
+    await page.getByText("Comprimento: 5,00 m").waitFor();
+    await page.keyboard.press("Control+z");
+    await page.getByText("Comprimento: 4,24 m").waitFor();
+  });
+
+  it("arrastar o canto de uma divisão muda a área; anular repõe", async () => {
+    await page.locator(".panel tr.clickable", { hasText: "Sala e cozinha" }).click();
+    await drag(at(4.2, 0), at(5, 0)); // trapézio (5 + 4,2) / 2 × 8 = 36,80 m²
+    // com a divisão selecionada, a área aparece na lista e no detalhe
+    await page.locator(".panel").getByText("36,80 m²").first().waitFor();
+    await page.keyboard.press("Control+z");
+    await page.locator(".panel").getByText("33,60 m²").first().waitFor();
+    await page.keyboard.press("Escape");
+  });
+
+  it("porta selecionada: F inverte a abertura, H a dobradiça", async () => {
+    await clickAt(at(2, 0));
+    await page.getByText("Largura (m)").waitFor();
+    const door = async () => {
+      await page.locator(".statusbar").getByText("guardado").waitFor({ timeout: 5000 });
+      const id = /#\/piso\/([^/?]+)/.exec(page.url())![1];
+      const f = await page.evaluate((id) => fetch(`/api/floors/${id}`).then((r) => r.json()), id);
+      const o = f.state.openings.find((x: { kind: string }) => x.kind === "porta");
+      return [o.swing, o.hinge];
+    };
+    assert.deepEqual(await door(), ["esquerda", "inicio"]);
+    await page.keyboard.press("f");
+    await expectEventually(door, ["direita", "inicio"]);
+    await page.keyboard.press("h");
+    await expectEventually(door, ["direita", "fim"]);
+    await page.keyboard.press("Control+z");
+    await page.keyboard.press("Control+z");
+    await expectEventually(door, ["esquerda", "inicio"]);
+    await page.keyboard.press("Escape");
   });
 
   it("cria um tipo de divisão novo a partir do diálogo", async () => {
