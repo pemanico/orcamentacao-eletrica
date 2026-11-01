@@ -148,6 +148,10 @@ confirmar).
     "não é projeto elétrico"). PDF pelo "Imprimir → Guardar como PDF" do browser (`@page A3
     landscape`, margens 0). Sem circuitos (F3) — ele aceitou. `floorPlan.ts`: carregador da
     planta partilhado (EditorPage usa o `completeMeta` de lá).
+  - Pedido dele: **símbolos do quadro elétrico e do quadro de telecomunicações**. Elementos
+    `quadro_eletrico` (QE: retângulo com metade preenchida) e `ati` (retângulo com "ATI" —
+    armário de telecomunicações individual, ITED) em `FLOOR_EQUIPMENT` (`symbols.tsx`): sempre
+    na paleta, mesmo sem defaults aprovados; põem-se à mão. O QE será a origem dos metros na F3.
   - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
     não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
     mobiliário.
@@ -166,6 +170,20 @@ confirmar).
    o símbolo vem de uma tabela de mapeamento, trocável.
    Parâmetros: ele diz que já preencheu calibres/ρ ("já está") — por confirmar C20 + 4 mm²
    sem "provisório" e se horas/preço da hora aprovados são reais ou placeholders.
+0b. **Por responder (2026-11-01):**
+   - "Preparar para a domótica" (pedido dele) — a domótica continua fora da app (decisão de
+     26/10); proposta: opção por projeto "Preparação para domótica" que liga regras. Falta ele
+     dizer o que é: (a) reserva no QE/ATI (F4), (b) tubo vazio ATI → divisões (F3/F5),
+     (c) neutro em todas as caixas de interruptor (mais cabo na iluminação).
+   - Resto da F2 segundo o plano: **contagens por divisão** (regras vs planta — proposto fazer,
+     é o que a F5 precisa) e **questionário por divisão** (proposto cortar: a edição na planta
+     já resolve os pedidos do cliente).
+   - F3: o plano fala em "grafo de percursos"; a decisão dele foi "cablagem v1 = estimativa
+     média". Proposta F3 v1: circuitos pelos tipos de circuito aprovados (≤ 8 pontos), potência
+     e calculadora de secções, metros = distância QE → ponto × fator de traçado + descidas pelo
+     pé-direito; grafo só depois do gate dos orçamentos reais.
+   - Ponto fora da divisão: aviso (atual) ou erro na aprovação dos pontos?
+   - O teste com a casa dele correu bem ("ficou ótimo"), sem detalhes.
 1. **F2 desbloqueada (2026-11-01).** BD dele verificada: todas as regras aprovadas —
    defaults 58/58, tipos de circuito 18/18, equipamentos 8/8, mão de obra 10/10, parâmetros 3/3.
    Atenção: Parâmetros só tem 3 linhas, faltam os calibres e a resistividade → a calculadora dá
