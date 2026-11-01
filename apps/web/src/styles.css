@@ -434,6 +434,9 @@ button:focus-visible {
 .point-symbol path {
   fill: none;
 }
+.point-symbol polygon.filled {
+  fill: #b3261e;
+}
 .point-label {
   fill: #b3261e;
   font-family: var(--mono);

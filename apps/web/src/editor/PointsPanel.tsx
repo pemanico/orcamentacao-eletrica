@@ -18,7 +18,7 @@ import { api } from "../api";
 import { RULES_CHANGED } from "../Shell";
 import type { Selection } from "./tools";
 import { uid } from "./util";
-import { elementName } from "./symbols";
+import { FLOOR_EQUIPMENT, elementName } from "./symbols";
 
 const ORIGIN_LABEL: Record<PointOrigin, string> = { auto: "automáticos", ajustado: "ajustados", manual: "à mão" };
 
@@ -66,7 +66,8 @@ export function PointsPanel({
   const defaults = useDefaults();
   const [summary, setSummary] = useState<string | null>(null);
   const approvedRows = (defaults ?? []).filter((r) => r.state === "aprovada");
-  const elements = [...new Set(approvedRows.map((r) => String(r.values.elemento ?? "").trim()).filter(Boolean))].sort((a, b) => elementName(a).localeCompare(elementName(b), "pt"));
+  // elementos dos defaults aprovados + equipamentos do piso (quadro, ATI), sempre disponíveis
+  const elements = [...new Set([...approvedRows.map((r) => String(r.values.elemento ?? "").trim()).filter(Boolean), ...FLOOR_EQUIPMENT])].sort((a, b) => elementName(a).localeCompare(elementName(b), "pt"));
   const issues = validatePoints(state);
   const roomName = (id: string) => state.rooms.find((r) => r.id === id)?.name ?? "—";
   const byOrigin = (o: PointOrigin) => state.points.filter((p) => p.origem === o).length;
@@ -97,7 +98,7 @@ export function PointsPanel({
   return (
     <section className="points-panel">
       <h3>Pontos ({state.points.length})</h3>
-      {defaults && elements.length === 0 && <p className="warn">Sem defaults por divisão aprovados: aprova-os em Regras.</p>}
+      {defaults && approvedRows.length === 0 && <p className="warn">Sem defaults por divisão aprovados: aprova-os em Regras.</p>}
       <label>
         Elemento a colocar
         <select aria-label="Elemento a colocar" value={pointElement ?? ""} onChange={(e) => choosePointElement(e.target.value || null)}>

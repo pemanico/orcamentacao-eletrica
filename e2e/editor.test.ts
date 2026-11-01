@@ -438,6 +438,13 @@ describe("F1 — planta", () => {
   it("F2: ferramenta Ponto põe à mão dentro de uma divisão; fora, recusa", async () => {
     const panel = page.locator(".points-panel");
     const before = await page.locator("svg.canvas g.point").count();
+    // equipamentos do piso: sempre na paleta
+    for (const name of ["Quadro elétrico (QE)", "Quadro de telecomunicações (ATI)"])
+      assert.equal(await panel.getByLabel("Elemento a colocar").locator("option", { hasText: name }).count(), 1, name);
+    await panel.getByLabel("Elemento a colocar").selectOption("quadro_eletrico");
+    await clickAt(at(0.5, 7));
+    await panel.getByText(/1 à mão/).waitFor();
+    await page.keyboard.press("Control+z"); // as contagens seguintes não contam com o quadro
     await panel.getByLabel("Elemento a colocar").selectOption("tomada_rede");
     await page.locator(".tool.active").getByText("Ponto").waitFor();
     await clickAt(at(1, 1));

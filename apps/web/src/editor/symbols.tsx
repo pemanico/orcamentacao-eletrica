@@ -40,7 +40,15 @@ const NAMES: Record<string, string> = {
   interruptor_comutado: "Comutador de escada",
   interruptor_estore: "Comando de estore",
   estore_motor: "Motor de estore",
+  quadro_eletrico: "Quadro elétrico (QE)",
+  ati: "Quadro de telecomunicações (ATI)",
 };
+
+/**
+ * Equipamentos do piso: não vêm dos defaults por divisão, põem-se sempre à mão e estão sempre
+ * na paleta. O QE é a origem dos percursos de cabo (F3).
+ */
+export const FLOOR_EQUIPMENT = ["quadro_eletrico", "ati"] as const;
 
 export function elementName(code: string): string {
   const known = NAMES[code.toLowerCase()];
@@ -60,7 +68,22 @@ export function PointSymbol({ elemento, x, y, sw, selected }: { elemento: string
   const e = elemento.toLowerCase();
   const kind = placementKind(e);
   let body;
-  if (e === "tomada_rede") {
+  if (e === "quadro_eletrico") {
+    // quadro (panelboard): retângulo com metade preenchida
+    body = (
+      <>
+        <rect x={x - r * 1.6} y={y - r * 0.8} width={r * 3.2} height={r * 1.6} strokeWidth={stroke} />
+        <polygon points={`${x - r * 1.6},${y + r * 0.8} ${x + r * 1.6},${y - r * 0.8} ${x + r * 1.6},${y + r * 0.8}`} className="filled" strokeWidth={stroke} />
+      </>
+    );
+  } else if (e === "ati") {
+    body = (
+      <>
+        <rect x={x - r * 1.6} y={y - r * 0.8} width={r * 3.2} height={r * 1.6} strokeWidth={stroke} />
+        {label("ATI", 7.5)}
+      </>
+    );
+  } else if (e === "tomada_rede") {
     // dados/telefone: triângulo
     body = <polygon points={`${x},${y - r} ${x + r},${y + r * 0.8} ${x - r},${y + r * 0.8}`} strokeWidth={stroke} />;
   } else if (e === "tomada_tv") {
