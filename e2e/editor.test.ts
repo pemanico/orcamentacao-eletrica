@@ -446,10 +446,28 @@ describe("F1 — planta", () => {
     await clickAt(at(-3, -3));
     await page.getByRole("alert").getByText(/Clica dentro de uma divisão/).waitFor();
 
+    // Ctrl+C / Ctrl+V: cópia onde está o rato, "à mão"; fora de uma divisão, recusa
+    await page.keyboard.press("v");
+    const n = await page.locator("svg.canvas g.point").count();
+    const pt = (await page.locator("svg.canvas g.point").last().boundingBox())!;
+    await page.mouse.click(pt.x + pt.width / 2, pt.y + pt.height / 2); // seleciona (clique sem arrasto)
+    await panel.getByText(/^Tomada de rede \(RJ45\) · Sala e cozinha/).waitFor();
+    await page.keyboard.press("Control+c");
+    const target = await screen(at(2, 5));
+    await page.mouse.move(target.x, target.y);
+    await page.keyboard.press("Control+v");
+    await panel.getByText(/2 à mão/).waitFor();
+    assert.equal(await page.locator("svg.canvas g.point").count(), n + 1);
+    const out = await screen(at(-3, -3));
+    await page.mouse.move(out.x, out.y);
+    await page.keyboard.press("Control+v");
+    await page.getByRole("alert").getByText(/Para colar, põe o rato dentro de uma divisão/).waitFor();
+    assert.equal(await page.locator("svg.canvas g.point").count(), n + 1);
+
     // voltar a propor mantém o ajustado e o posto à mão
     await panel.getByRole("button", { name: "Propor pontos" }).click();
-    await panel.getByTestId("points-summary").getByText(/ substituídos · 2 mantidos/).waitFor();
-    await panel.getByText(/1 ajustados · 1 à mão/).waitFor();
+    await panel.getByTestId("points-summary").getByText(/ substituídos · 3 mantidos/).waitFor();
+    await panel.getByText(/1 ajustados · 2 à mão/).waitFor();
   });
 
   it("página Dados mostra onde estão os dados e faz a cópia de segurança", async () => {

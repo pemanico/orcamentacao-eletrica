@@ -5,7 +5,7 @@ export const selecionar: ToolHandler<"selecionar"> = {
   id: "selecionar",
   label: "Selecionar",
   key: "V",
-  help: "Clica para selecionar. Arrasta o fundo para mover a vista. Arrasta as pegas de um elemento selecionado para o corrigir, ou um ponto para o mover. Delete apaga.",
+  help: "Clica para selecionar. Arrasta o fundo para mover a vista. Arrasta as pegas de um elemento selecionado para o corrigir, ou um ponto para o mover. Ctrl+C / Ctrl+V copia um ponto para onde está o rato. Delete apaga.",
   cursor: "default",
 
   pointerDown(ctx, { target }) {

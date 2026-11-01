@@ -14,6 +14,7 @@ import {
   unitsToMeters,
   validateFloor,
   type FloorState,
+  type ElectricPoint,
   type Opening,
   type Point,
   type Room,
@@ -69,6 +70,8 @@ export function Editor({
   const [message, setMessage] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = usePref("orc.painel", true);
   const [pointElement, setPointElement] = useState<string | null>(null);
+  /** Ctrl+C: ponto copiado (área de transferência interna do editor) */
+  const [copied, setCopied] = useState<ElectricPoint | null>(null);
   const [hintOpen, setHintOpen] = usePref("orc.ajuda", true);
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -162,6 +165,21 @@ export function Editor({
       return { ...s, rooms: s.rooms.filter((r) => r.id !== selection.id), points: s.points.filter((p) => p.roomId !== selection.id) };
     });
     setSelection(null);
+  };
+
+  /**
+   * Ctrl+V: cópia do ponto onde está o rato (ou 50 cm ao lado do original, se o rato estiver
+   * fora da planta). Fica "à mão", na divisão onde cai, e selecionada para colar outra vez.
+   */
+  const pastePoint = (src: ElectricPoint) => {
+    const offset = scale ? metersToUnits(0.5, scale) : 20;
+    const at = cursor?.point ?? { x: src.x + offset, y: src.y };
+    const room = roomAt(state.rooms, at);
+    if (!room) return setMessage("Para colar, põe o rato dentro de uma divisão.");
+    const id = uid();
+    commit((s) => ({ ...s, points: [...s.points, { id, roomId: room.id, elemento: src.elemento, x: at.x, y: at.y, origem: "manual" }] }));
+    setSelection({ kind: "point", id });
+    setMessage(null);
   };
 
   const updateOpening = (id: string, patch: Partial<Opening>) =>
@@ -309,6 +327,17 @@ export function Editor({
       if ((e.ctrlKey || e.metaKey) && k === "y") {
         e.preventDefault();
         return redo();
+      }
+      if ((e.ctrlKey || e.metaKey) && k === "c") {
+        const p = selection?.kind === "point" ? state.points.find((q) => q.id === selection.id) : null;
+        if (!p) return;
+        e.preventDefault();
+        setCopied(p);
+        return setMessage(null);
+      }
+      if ((e.ctrlKey || e.metaKey) && k === "v" && copied) {
+        e.preventDefault();
+        return pastePoint(copied);
       }
       if (e.ctrlKey || e.metaKey) return;
       if (e.code === "Space") return e.preventDefault();

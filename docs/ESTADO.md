@@ -136,6 +136,9 @@ confirmar).
   - Pedido dele: **descrição ao passar o rato** por cima de cada ponto (`<title>` SVG, em
     todas as ferramentas): nome por extenso (`elementName` em `symbols.tsx`), divisão e origem.
     A lista "Elemento a colocar" usa os mesmos nomes.
+  - Pedido dele: **Ctrl+C / Ctrl+V** de pontos — cópia onde está o rato (ou 50 cm ao lado se o
+    rato estiver fora da planta), fica "manual" na divisão onde cai e selecionada; fora de uma
+    divisão, recusa. Área de transferência interna (não a do sistema).
   - Limitações v1: colocação não evita pontos já existentes (ajustados/manuais); interruptor
     não sabe a que luz liga (F3); sem legenda dos símbolos; posições de tomadas não consideram
     mobiliário.
