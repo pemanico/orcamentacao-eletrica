@@ -158,7 +158,8 @@ export function Editor({
         };
       }
       if (selection.kind === "opening") return { ...s, openings: s.openings.filter((o) => o.id !== selection.id) };
-      return { ...s, rooms: s.rooms.filter((r) => r.id !== selection.id) };
+      // os pontos da divisão vão com ela (F2)
+      return { ...s, rooms: s.rooms.filter((r) => r.id !== selection.id), points: s.points.filter((p) => p.roomId !== selection.id) };
     });
     setSelection(null);
   };

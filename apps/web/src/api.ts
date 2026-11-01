@@ -63,8 +63,11 @@ export interface Floor {
   state: FloorState;
   rev: number;
   approvedAt: string | null;
+  /** F2: aprovação dos pontos, separada da do piso */
+  pointsApprovedAt: string | null;
   updatedAt: string;
   issues: Issue[];
+  pointIssues: Issue[];
 }
 
 export interface DataInfo {

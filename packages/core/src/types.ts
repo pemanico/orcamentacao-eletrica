@@ -96,11 +96,32 @@ export interface Room {
   polygon: Point[];
 }
 
+/**
+ * Origem de um ponto (F2):
+ * - auto: proposto pela app e nunca mexido — voltar a propor substitui-o;
+ * - ajustado: proposto pela app e movido à mão — voltar a propor mantém-no;
+ * - manual: posto à mão.
+ */
+export const POINT_ORIGINS = ["auto", "ajustado", "manual"] as const;
+export type PointOrigin = (typeof POINT_ORIGINS)[number];
+
+/** Ponto da instalação (tomada, ponto de luz, interruptor…) numa divisão. */
+export interface ElectricPoint {
+  id: string;
+  roomId: string;
+  /** código do elemento, o mesmo dos defaults por divisão (ex.: "tomada", "ponto_luz") */
+  elemento: string;
+  x: number;
+  y: number;
+  origem: PointOrigin;
+}
+
 export interface FloorState {
   scale: ScaleCalibration | null;
   walls: Wall[];
   openings: Opening[];
   rooms: Room[];
+  points: ElectricPoint[];
 }
 
 export const emptyFloorState = (): FloorState => ({
@@ -108,4 +129,5 @@ export const emptyFloorState = (): FloorState => ({
   walls: [],
   openings: [],
   rooms: [],
+  points: [],
 });

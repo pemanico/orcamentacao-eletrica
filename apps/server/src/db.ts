@@ -59,6 +59,7 @@ export function openDb(file: string) {
   const fcols = (db.prepare("PRAGMA table_info(floors)").all() as { name: string }[]).map((c) => c.name);
   if (!fcols.includes("source_kind")) db.exec("ALTER TABLE floors ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'pdf'");
   if (!fcols.includes("source_meta")) db.exec("ALTER TABLE floors ADD COLUMN source_meta TEXT");
+  if (!fcols.includes("points_approved_at")) db.exec("ALTER TABLE floors ADD COLUMN points_approved_at TEXT");
   return db;
 }
 
@@ -100,6 +101,8 @@ export interface FloorRow {
   state_json: string;
   rev: number;
   approved_at: string | null;
+  /** F2: aprovação dos pontos, separada da do piso */
+  points_approved_at: string | null;
   created_at: string;
   updated_at: string;
 }

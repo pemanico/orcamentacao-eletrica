@@ -126,6 +126,7 @@ describe("validação do piso", () => {
   it("piso completo é aprovável e o schema aceita-o", () => {
     const u = 1 / expectedMetersPerUnit(100); // unidades por metro
     const state: FloorState = {
+      points: [],
       scale: calibrate({ x: 0, y: 0 }, { x: 4.2 * u, y: 0 }, 4.2, 100),
       walls: [{ id: "w1", a: { x: 0, y: 0 }, b: { x: 4 * u, y: 0 }, thicknessM: 0.15 }],
       openings: [{ id: "o1", kind: "porta", wallId: "w1", t: 0.5, widthM: 0.8, hinge: "inicio", swing: "esquerda" }],

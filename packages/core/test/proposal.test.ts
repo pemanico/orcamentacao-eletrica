@@ -18,6 +18,7 @@ const state: FloorState = {
   walls: [{ id: "w1", a: { x: 0, y: 0 }, b: { x: 400, y: 0 }, thicknessM: 0.2 }],
   openings: [{ id: "o1", kind: "janela", wallId: "w1", t: 0.5, widthM: 1.2, hinge: "inicio", swing: "esquerda" }],
   rooms: [],
+  points: [],
 };
 
 let n = 0;

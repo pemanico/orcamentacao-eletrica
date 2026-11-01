@@ -9,8 +9,10 @@ import {
   PAGE_UNITS_PER_METER,
   dxfToPage,
   floorStateSchema,
+  geometryChanged,
+  normalizeFloorState,
   validateFloor,
-  type FloorState,
+  validatePoints,
   type ProjectStatus,
 } from "@orc/core";
 import { newId, type AppContext } from "../context.ts";
@@ -47,7 +49,7 @@ const floorUpdateInput = z.object({
 });
 
 export const floorDto = (r: FloorRow) => {
-  const state = JSON.parse(r.state_json) as FloorState;
+  const state = normalizeFloorState(JSON.parse(r.state_json));
   return {
     id: r.id,
     projectId: r.project_id,
@@ -62,8 +64,10 @@ export const floorDto = (r: FloorRow) => {
     state,
     rev: r.rev,
     approvedAt: r.approved_at,
+    pointsApprovedAt: r.points_approved_at,
     updatedAt: r.updated_at,
     issues: validateFloor(state),
+    pointIssues: validatePoints(state),
   };
 };
 
@@ -114,10 +118,10 @@ export function registerFloorRoutes(router: Router, { db, pdfDir, getFloor, getP
       const current = (row.source_meta ? JSON.parse(row.source_meta) : {}) as Record<string, unknown>;
       const next = { ...current, ...Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)) };
       const geometryChange = input.region !== undefined || input.unit !== undefined;
-      const state = JSON.parse(row.state_json) as FloorState;
+      const state = normalizeFloorState(JSON.parse(row.state_json));
       if (geometryChange) {
-        if (state.walls.length || state.rooms.length || state.openings.length) {
-          throw new HttpError(409, "Já há paredes ou divisões traçadas. Para mudar a região ou as unidades, apaga-as primeiro.");
+        if (state.walls.length || state.rooms.length || state.openings.length || state.points.length) {
+          throw new HttpError(409, "Já há paredes, divisões ou pontos traçados. Para mudar a região ou as unidades, apaga-os primeiro.");
         }
         if (!next.region || !next.unit) throw new HttpError(400, "Indica a região e as unidades.");
         const t = dxfToPage(next.region as z.infer<typeof regionSchema>, next.unit as "m" | "cm" | "mm");
@@ -130,7 +134,7 @@ export function registerFloorRoutes(router: Router, { db, pdfDir, getFloor, getP
           stampDenominator: 100,
         };
         db.prepare(
-          `UPDATE floors SET source_meta = ?, state_json = ?, rev = rev + 1, approved_at = NULL,
+          `UPDATE floors SET source_meta = ?, state_json = ?, rev = rev + 1, approved_at = NULL, points_approved_at = NULL,
              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
         ).run(JSON.stringify(next), JSON.stringify(state), row.id);
         touchProject(row.project_id);
@@ -154,7 +158,9 @@ export function registerFloorRoutes(router: Router, { db, pdfDir, getFloor, getP
     /**
      * Gravação com controlo de concorrência otimista: se o piso mudou desde que foi
      * lido (outro separador), responde 409 em vez de sobrescrever.
-     * Qualquer alteração retira a aprovação (princípio 4 do plano).
+     * Qualquer alteração retira a aprovação (princípio 4 do plano), com uma exceção (F2):
+     * mudar só os pontos retira só a aprovação dos pontos; mudar a planta, o nome ou o
+     * pé-direito retira as duas.
      */
     .on("PUT", "/api/floors/:id", async ({ req, params }) => {
       const input = floorUpdateInput.parse(await readJson(req));
@@ -163,15 +169,26 @@ export function registerFloorRoutes(router: Router, { db, pdfDir, getFloor, getP
       if (row.rev !== input.rev) {
         throw new HttpError(409, "O piso foi alterado noutro separador. Recarrega a página.", { rev: row.rev });
       }
+      const prev = normalizeFloorState(JSON.parse(row.state_json));
+      const next = input.state ?? prev;
+      const metaChanged =
+        (input.name !== undefined && input.name !== row.name) ||
+        (input.ceilingHeightM !== undefined && input.ceilingHeightM !== row.ceiling_height_m);
+      const planChanged = metaChanged || geometryChanged(prev, next);
+      const pointsChanged = planChanged || JSON.stringify(prev.points) !== JSON.stringify(next.points);
       const result = db
         .prepare(
-          `UPDATE floors SET name = ?, ceiling_height_m = ?, state_json = ?, rev = rev + 1, approved_at = NULL,
+          `UPDATE floors SET name = ?, ceiling_height_m = ?, state_json = ?, rev = rev + 1,
+             approved_at = CASE WHEN ? THEN NULL ELSE approved_at END,
+             points_approved_at = CASE WHEN ? THEN NULL ELSE points_approved_at END,
              updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND rev = ?`,
         )
         .run(
           input.name ?? row.name,
           input.ceilingHeightM ?? row.ceiling_height_m,
-          input.state ? JSON.stringify(input.state) : row.state_json,
+          JSON.stringify(next),
+          planChanged ? 1 : 0,
+          pointsChanged ? 1 : 0,
           row.id,
           row.rev,
         );
@@ -237,9 +254,19 @@ export function registerFloorRoutes(router: Router, { db, pdfDir, getFloor, getP
     .on("POST", "/api/floors/:id/approve", ({ params }) => {
       const row = getFloor(params.id!);
       if (!row) throw new HttpError(404, "Piso não encontrado.");
-      const issues = validateFloor(JSON.parse(row.state_json));
+      const issues = validateFloor(normalizeFloorState(JSON.parse(row.state_json)));
       if (!canApprove(issues)) throw new HttpError(422, "O piso tem erros por resolver.", { issues });
       db.prepare("UPDATE floors SET approved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(row.id);
+      return floorDto(getFloor(row.id)!);
+    })
+    /** F2: aprovar os pontos. Só com o piso aprovado e sem erros nos pontos. */
+    .on("POST", "/api/floors/:id/points/approve", ({ params }) => {
+      const row = getFloor(params.id!);
+      if (!row) throw new HttpError(404, "Piso não encontrado.");
+      if (!row.approved_at) throw new HttpError(409, "Aprova primeiro a planta do piso.");
+      const issues = validatePoints(normalizeFloorState(JSON.parse(row.state_json)));
+      if (!canApprove(issues)) throw new HttpError(422, "Os pontos têm erros por resolver.", { issues });
+      db.prepare("UPDATE floors SET points_approved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(row.id);
       return floorDto(getFloor(row.id)!);
     });
 }

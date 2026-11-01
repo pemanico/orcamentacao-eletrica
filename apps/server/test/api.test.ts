@@ -91,7 +91,8 @@ describe("API", () => {
 
   it("grava o estado, controla a revisão e aprova", async () => {
     const u = 1 / expectedMetersPerUnit(100);
-    const state: FloorState = {
+    // sem `points`: um cliente anterior à F2 continua a gravar
+    const state: Omit<FloorState, "points"> = {
       scale: calibrate({ x: 0, y: 0 }, { x: 4.2 * u, y: 0 }, 4.2, 100),
       walls: [],
       openings: [],
@@ -119,6 +120,49 @@ describe("API", () => {
   it("rejeita estado malformado", async () => {
     const r = await req("PUT", `/api/floors/${floorId}`, { rev: 3, state: { scale: null, walls: "x", openings: [], rooms: [] } });
     assert.equal(r.status, 400);
+  });
+
+  it("F2: pontos com aprovação própria", async () => {
+    let f = (await req("GET", `/api/floors/${floorId}`)).body;
+    assert.deepEqual(f.state.points, [], "piso anterior à F2 lê-se com lista vazia");
+    assert.ok(f.pointIssues.some((i: { message: string }) => i.message === "Nenhum ponto colocado."));
+
+    const u = 1 / expectedMetersPerUnit(100);
+    const point = { id: "p1", roomId: "r1", elemento: "tomada", x: 3 * u, y: 1 * u, origem: "auto" };
+    const put = (state: unknown) => req("PUT", `/api/floors/${floorId}`, { rev: f.rev, state });
+
+    // sem a planta aprovada, os pontos não se aprovam
+    f = (await put({ ...f.state, points: [point] })).body;
+    assert.equal((await req("POST", `/api/floors/${floorId}/points/approve`)).status, 409);
+
+    assert.equal((await req("POST", `/api/floors/${floorId}/approve`)).status, 200);
+    const pa = await req("POST", `/api/floors/${floorId}/points/approve`);
+    assert.equal(pa.status, 200);
+    assert.ok(pa.body.pointsApprovedAt);
+    f = pa.body;
+
+    // mover um ponto: só os pontos perdem a aprovação
+    f = (await put({ ...f.state, points: [{ ...point, x: 2 * u, origem: "ajustado" }] })).body;
+    assert.ok(f.approvedAt, "a planta continua aprovada");
+    assert.equal(f.pointsApprovedAt, null);
+
+    // ponto de uma divisão que não existe: erro, não aprova
+    f = (await put({ ...f.state, points: [...f.state.points, { ...point, id: "p2", roomId: "nao-existe" }] })).body;
+    const bad = await req("POST", `/api/floors/${floorId}/points/approve`);
+    assert.equal(bad.status, 422);
+
+    f = (await put({ ...f.state, points: [{ ...point, x: 2 * u, origem: "ajustado" }] })).body;
+    f = (await req("POST", `/api/floors/${floorId}/points/approve`)).body;
+    assert.ok(f.pointsApprovedAt);
+
+    // mexer na planta: perdem-se as duas aprovações
+    const rooms = f.state.rooms.map((r: { name: string }) => ({ ...r, name: "Sala comum" }));
+    f = (await put({ ...f.state, rooms })).body;
+    assert.equal(f.approvedAt, null);
+    assert.equal(f.pointsApprovedAt, null);
+
+    const badOrigin = await put({ ...f.state, points: [{ ...point, origem: "magia" }] });
+    assert.equal(badOrigin.status, 400);
   });
 
   it("resumo do projeto inclui o piso", async () => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ROOM_TYPE_CODE } from "./roomTypes";
+import { POINT_ORIGINS } from "./types";
 
 /** Validação do estado do piso nas fronteiras (API, ficheiros importados). */
 const point = z.object({ x: z.number().finite(), y: z.number().finite() });
@@ -36,4 +37,18 @@ export const floorStateSchema = z.object({
       polygon: z.array(point),
     }),
   ),
+  /** F2. Pisos gravados antes da F2 não têm pontos: lista vazia. */
+  points: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        roomId: z.string().min(1),
+        elemento: z.string().trim().min(1).max(60),
+        x: z.number().finite(),
+        y: z.number().finite(),
+        origem: z.enum(POINT_ORIGINS),
+      }),
+    )
+    .max(2000)
+    .default([]),
 });

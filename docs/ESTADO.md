@@ -99,13 +99,21 @@ confirmar).
   sem linhas próprias usa as do tipo base (escritório → quarto); open space = **maior valor
   por elemento, não a soma** (somar duplicava as regras por m²) — `contributions` guarda o
   valor de cada tipo; avisa tipos sem regras e lista as linhas por aprovar. Sem UI.
+- **F2 passo 2 — pontos no estado do piso** (2026-11-01): `FloorState.points`
+  `{ id, roomId, elemento, x, y, origem: auto | ajustado | manual }` (auto = proposto e nunca
+  mexido, o único que "voltar a propor" substitui). Schema com `.default([])` e
+  `normalizeFloorState` no servidor: pisos antigos lêem-se sem migração. Coluna
+  `floors.points_approved_at`; `POST /api/floors/:id/points/approve` (exige planta aprovada,
+  sem erros em `validatePoints`: sem pontos ou divisão inexistente = erro, fora da divisão =
+  aviso). PUT: mexer só nos pontos retira só a aprovação dos pontos; planta, nome ou
+  pé-direito retiram as duas. DTO com `pointsApprovedAt` e `pointIssues`. Apagar uma divisão
+  no editor apaga os pontos dela. Sem UI de pontos ainda.
 - **Dados**: SQLite em `data/orcamentacao.db`, autosave, cópias de segurança, página Dados.
 
 ## Pendente (por ordem)
 
 0. **Plano da F2 aprovado (2026-11-01)** — B com A dentro (ele leva a planta com pontos ao
-   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso
-   `{ id, roomId, elemento, x, y, origem: auto|manual }`; 3) passo 2b (e2e pegas e F/H,
+   cliente): 1) proposta de quantidades (feito); 2) pontos no estado do piso (feito); 3) passo 2b (e2e pegas e F/H,
    `ToolHandler`); 4) ferramenta "ponto" + "Propor pontos"; 5) painel previstos vs colocados.
    Decisões dele ("ok"): colocação — luzes ao centro (grelha se por m²), tomadas pelas paredes
    fora das aberturas, interruptor junto à porta do lado do fecho, comando de estore junto à
@@ -192,7 +200,7 @@ regras/         CSV iniciais (sem valores comerciais)
   `scale.metersPerUnit`. DXF mapeado "como PDF a 1:100" (`PAGE_UNITS_PER_METER`).
 - Concorrência otimista: `rev` + 409. Autosave ~700 ms.
 - Comandos: `npm start`, `npm run dev`, `npm test`, `npm run typecheck`,
-  `npm run test:e2e`. Estado dos testes: core 68, servidor 38, e2e 29; typecheck e typecheck:web limpos — tudo verde.
+  `npm run test:e2e`. Estado dos testes: core 72, servidor 39, e2e 29; typecheck limpo. **typecheck:web por correr no PC dele** (passo 2 mexeu em `api.ts` e `Editor.tsx`; aqui não há @types/react).
 - No ambiente cloud do Claude o registo npm está bloqueado: node_modules são symlinks para
   `/opt/npm-tools/node_modules` (mais `node_modules/@orc/core` e `@orc/server` → pastas do repo;
   @types/react copiados do PC dele pela ligação ao computador); `typecheck:web` corre lá com os @types copiados. No PC dele
