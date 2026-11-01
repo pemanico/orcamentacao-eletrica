@@ -1,6 +1,6 @@
 # Estado do projeto — passagem entre chats
 
-Última atualização: 2026-10-26 · commit `6869900` · repo https://github.com/pemanico/orcamentacao-eletrica
+Última atualização: 2026-11-01 · commit `COMMIT_HASH` · repo https://github.com/pemanico/orcamentacao-eletrica
 
 Lê isto primeiro num chat novo. O plano de design aprovado está em
 https://claude.ai/code/artifact/2ec78d2f-2f64-4915-9ce5-c4920dc2438e (fases F0–F5).
@@ -98,15 +98,21 @@ confirmar).
 
 ## Pendente (por ordem)
 
-1. **Ele** (bloqueia a F2): `git pull` e aprovar os 58 defaults (em bloco). Escritório herda
-   os do quarto (inclui 3 comutados — rever se quiser linhas próprias). Closet: sensor de porta?
+1. **F2 desbloqueada (2026-11-01).** BD dele verificada: todas as regras aprovadas —
+   defaults 58/58, tipos de circuito 18/18, equipamentos 8/8, mão de obra 10/10, parâmetros 3/3.
+   Atenção: Parâmetros só tem 3 linhas, faltam os calibres e a resistividade → a calculadora dá
+   erro até ele correr "Preencher com referência" em Parâmetros e aprovar.
+   **Próximo: arrancar a F2** — começar pelo passo 2b do editor (ToolHandler, um ficheiro por
+   ferramenta; antes, e2e de pegas e F/H), depois ferramenta "ponto" e colocação automática
+   com `defaultQuantity` / `windowsInRoom`; normalizar o estado do piso em tabelas.
 2. **Ele (formador)**: horas de mão de obra, preço da hora; e o que o RTIEBT não fixa:
    disjuntor por tipo de circuito, Ks por tipo de utilização (e sobre que potência se
    aplica), potência dos equipamentos, cos φ, o que conta como "compartimento", método de
    instalação/k2 por omissão (tubos separados 52-E3 vs mesmo elemento 52-E1; paredes com
    isolamento → método A), 30 mA em todos os circuitos (prática) ou só onde é obrigatório.
    Bomba de calor de AQS: climatização ou termoacumulador? (secção mínima igual, 2,5 mm²).
-   Secção 702 (piscina) ainda por ler. Mostrar ao formador o erro do exercício do
+   Secção 702 (piscina) ainda por ler. Simultaneidade: Ks por equipamento (tabela atual) ou
+   por tipo de circuito, e que potência atribuir a um circuito de tomadas (bloqueia a F4). Mostrar ao formador o erro do exercício do
    termoacumulador (6 vs 4 mm²) e a regra "compartimento > 4 m², sem cozinha e WC" (não está
    no RTIEBT — de onde vem?). Curva do disjuntor (B/C/D) e Icc: que valores usa para a rede?
 3. **Ele**: cronometrar o piso 0 traçado a partir do DXF. Se > 10 min → gerar paredes
